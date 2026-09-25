@@ -54,6 +54,20 @@ reports/*.tmp
 vendor/LitePT/.git/
 vendor/ForAINet/
 
+# Parts of the local LitePT checkout not imported by this project
+vendor/LitePT/.gitignore
+vendor/LitePT/configs/
+vendor/LitePT/datasets/
+vendor/LitePT/demo_use.py
+vendor/LitePT/engines/
+vendor/LitePT/libs/pointgroup_ops/
+vendor/LitePT/libs/pointops/
+vendor/LitePT/libs/sparsehash/
+vendor/LitePT/metrics/
+vendor/LitePT/scripts/
+vendor/LitePT/tools/
+vendor/LitePT/utils/
+
 # Native extension build products
 vendor/**/build/
 vendor/**/*.so
