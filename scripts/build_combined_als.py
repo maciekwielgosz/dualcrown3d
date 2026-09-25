@@ -28,7 +28,9 @@ from shapely.geometry import box
 
 PROJECT = Path(__file__).resolve().parents[1]
 ROOT = PROJECT.parent
-sys.path.insert(0, str(ROOT / "run_r/code"))
+RUN_R_CODE = ROOT / "run_r" / "code"
+REFERENCE_CODE = PROJECT / "reused" / "reference_scripts"
+sys.path.insert(0, str(RUN_R_CODE if RUN_R_CODE.is_dir() else REFERENCE_CODE))
 import for_instance_to_chm_gt as converter
 from prepare_pointcloud_dataset import voxel_indices
 

@@ -23,7 +23,9 @@ from shapely.geometry import MultiPoint, Point, Polygon
 
 PROJECT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT))
-sys.path.insert(0, str(PROJECT.parent / "run_r/code"))
+RUN_R_CODE = PROJECT.parent / "run_r" / "code"
+REFERENCE_CODE = PROJECT / "reused" / "reference_scripts"
+sys.path.insert(0, str(RUN_R_CODE if RUN_R_CODE.is_dir() else REFERENCE_CODE))
 from pointcloud.data import load_npz, read_manifest
 from pointcloud.experiment_log import ROOT, record
 from scripts.evaluate_pointcloud_mask_decoder import load_model, predict_plot, filter_instances
