@@ -21,7 +21,7 @@ from shapely.geometry import MultiPolygon, Point
 PROJECT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT))
 from pointcloud.dual_head import DualHeadLitePT
-from pointcloud.instance_output import merge_masks
+from pointcloud.instance_output import merge_masks_with_sources
 from scripts.evaluate_pointcloud_litept import starts_for_axis, ownership_intervals, model_input, cluster_candidates, filter_candidates, dbh_naslund
 
 
@@ -152,7 +152,7 @@ def color_ids(ids):
     return rgb
 
 
-def export_laz(output, arrays, metadata, new_ids, old_ids, confidence, semantic):
+def export_laz(output, arrays, metadata, new_ids, old_ids, confidence, semantic, assignment_source=None):
     """Use the preparation grid's exact inverse, retaining original XYZ and LAS fields."""
     clouds = []
     left, bottom, right, top = metadata['processing_bounds']
@@ -191,11 +191,14 @@ def export_laz(output, arrays, metadata, new_ids, old_ids, confidence, semantic)
     inverse = order[positions]
     ids, legacy = new_ids[inverse].copy(), old_ids[inverse].copy()
     scores, classes = confidence[inverse].copy(), semantic[inverse].copy()
+    sources = ((new_ids > 0).astype(np.uint8) if assignment_source is None else assignment_source)[inverse].copy()
     classes[ids > 0] = 1
     ids[ground] = 0
     legacy[ground] = 0
     scores[ground] = 0
     classes[ground] = 0
+    sources[ids == 0] = 0
+    status = np.where(ids > 0, 1, np.where(classes == 1, 2, 0)).astype(np.uint8)
     folder = output / 'PointClouds'
     folder.mkdir(parents=True, exist_ok=True)
     reports = []
@@ -208,13 +211,15 @@ def export_laz(output, arrays, metadata, new_ids, old_ids, confidence, semantic)
             cloud = laspy.convert(cloud, point_format_id=formats[cloud.header.point_format.id])
         cloud.header.add_crs(CRS(metadata['chm_crs']))
         for name, dtype in [('tree_id', np.uint32), ('legacy_tree_id', np.uint32),
-                            ('tree_confidence', np.float32), ('pred_semantic', np.uint8), ('height_agl', np.float32)]:
+                            ('tree_confidence', np.float32), ('pred_semantic', np.uint8), ('height_agl', np.float32),
+                            ('assignment_source', np.uint8), ('segmentation_status', np.uint8)]:
             if name in set(cloud.point_format.dimension_names):
                 raise ValueError(f'Source already contains predicted field {name}')
             cloud.add_extra_dim(laspy.ExtraBytesParams(name=name, type=dtype))
         cloud.tree_id, cloud.legacy_tree_id = ids[sl], legacy[sl]
         cloud.tree_confidence, cloud.pred_semantic = scores[sl], classes[sl]
         cloud.height_agl = normalized[sl, 2].astype(np.float32)
+        cloud.assignment_source, cloud.segmentation_status = sources[sl], status[sl]
         colors = color_ids(ids[sl])
         cloud.red, cloud.green, cloud.blue = colors.T
         for tile in metadata['tiles']:
@@ -227,13 +232,16 @@ def export_laz(output, arrays, metadata, new_ids, old_ids, confidence, semantic)
             path = folder / f"trees_{tile['tile_id']}{suffix}.laz"
             part.write(path)
             check = laspy.read(path)
-            for dimension in ('X', 'Y', 'Z', 'tree_id', 'legacy_tree_id', 'classification', 'intensity'):
+            for dimension in ('X', 'Y', 'Z', 'tree_id', 'legacy_tree_id', 'classification', 'intensity',
+                              'assignment_source', 'segmentation_status'):
                 if not np.array_equal(np.asarray(check[dimension]), np.asarray(part[dimension])):
                     raise AssertionError(f'LAZ round-trip changed {dimension}')
             if check.header.parse_crs().to_epsg() != 2180:
                 raise AssertionError('Unexpected LAZ CRS')
             reports.append(dict(file=str(path), points=len(part.points), labelled_points=int((part.tree_id > 0).sum()),
-                                trees=len(np.unique(part.tree_id[part.tree_id > 0])), exact_voxel_mapping=True))
+                                trees=len(np.unique(part.tree_id[part.tree_id > 0])), exact_voxel_mapping=True,
+                                assignment_source={str(k): int((part.assignment_source == k).sum()) for k in range(6)},
+                                unassigned_predicted_tree_points=int((part.segmentation_status == 2).sum())))
             print(f'LAZ: {path.name}: {len(part.points):,} original points', flush=True)
     return reports
 
@@ -241,9 +249,9 @@ def export_laz(output, arrays, metadata, new_ids, old_ids, confidence, semantic)
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--checkpoint', type=Path, default=PROJECT / 'outputs/dual_head_satv2_litept_v3/weights/best.pt')
-    p.add_argument('--selection', type=Path, default=PROJECT / 'configs/dual_head_inference.json')
+    p.add_argument('--selection', type=Path, default=PROJECT / 'configs/dual_head_complete_consensus.json')
     p.add_argument('--prepared-dir', type=Path, default=PROJECT / 'output_15_litept_v2_no_rectangles_pointcloud/work')
-    p.add_argument('--output-dir', type=Path, default=PROJECT / 'output_17_dual_head_support_fusion')
+    p.add_argument('--output-dir', type=Path, default=PROJECT / 'output_19_dual_head_complete_consensus')
     p.add_argument('--stage', choices=('predict', 'export', 'all'), default='all')
     p.add_argument('--raw-predictions', type=Path,
                    help='Reuse an existing prediction NPZ; requires --stage export')
@@ -259,6 +267,8 @@ def main():
         arrays = {k: f[k] for k in f.files}
     metadata = json.loads((args.prepared_dir / 'preparation.json').read_text())
     selection = json.loads(args.selection.read_text())
+    if selection.get('acceptance_passed') is False:
+        raise ValueError('Refusing a selection that failed validation acceptance')
     if hashlib.sha256(args.checkpoint.read_bytes()).hexdigest() != selection['checkpoint_sha256']:
         raise ValueError('Checkpoint differs from the validation-frozen selection')
     checkpoint = torch.load(args.checkpoint, map_location='cpu', weights_only=False)
@@ -283,7 +293,7 @@ def main():
             raise ValueError('Raw predictions use a different checkpoint')
         if len(raw['tree_probability']) != len(arrays['coord']):
             raise ValueError('Raw predictions and prepared point cloud have different sizes')
-        new_ids, confidence, new_instances = merge_masks(arrays, raw, selection['config'])
+        new_ids, confidence, new_instances, assignment_source = merge_masks_with_sources(arrays, raw, selection['config'])
         # Apply the same core-tile ownership contract as the GIS outputs.
         core_instances = [p for p in new_instances if any(
             t['bounds'][0] <= p['top_x'] < t['bounds'][2]
@@ -294,6 +304,7 @@ def main():
             item['tree_id'] = i
         new_ids = renumber[new_ids]
         confidence[new_ids == 0] = 0.
+        assignment_source[new_ids == 0] = 0
         new_instances = core_instances
         old_ids, old_instances, mapping = legacy_instances(arrays, raw, metadata, checkpoint['config']['legacy_cluster_config'])
         legacy_report = write_vectors(old_instances, metadata, output / 'Segmentation3', legacy=True)
@@ -302,7 +313,8 @@ def main():
             writer = csv.DictWriter(f, fieldnames=['legacy_tree_id', 'tile_id', 'gpkg_treeID'])
             writer.writeheader()
             writer.writerows(mapping)
-        clouds = export_laz(output, arrays, metadata, new_ids, old_ids, confidence, (raw['point_probability'] >= .3).astype(np.uint8))
+        clouds = export_laz(output, arrays, metadata, new_ids, old_ids, confidence,
+                            (raw['point_probability'] >= .3).astype(np.uint8), assignment_source)
         report = dict(checkpoint=str(args.checkpoint.resolve()), checkpoint_sha256=selection['checkpoint_sha256'],
                       selection=str(args.selection.resolve()), raw_predictions=str(raw_path.resolve()),
                       reused_raw_predictions=args.raw_predictions is not None,
@@ -320,16 +332,24 @@ def main():
             'restore its complete DISPLAYED range on each cloud; saturation alone does not restore hidden points. '
             '`tree_id = 0` means no assigned tree. Coordinates are original elevations, not normalized heights; '
             '`height_agl` provides the separate normalized height.\n\n'
-            '- `tree_id`: new mask-decoder instance ID, globally unique across tiles.\n'
+            '- `tree_id`: final mask/consensus instance ID, globally unique across tiles.\n'
             '- `legacy_tree_id`: old branch instance ID; see `legacy_tree_id_map.csv` for per-tile polygon IDs.\n'
-            '- `tree_confidence`: mask probability multiplied by predicted mask-quality score (not calibrated accuracy).\n'
+            '- `tree_confidence`: originating-head score (mask probability times quality, or semantic probability); '
+            'interpret with assignment_source and the selected configuration. These scores are uncalibrated, '
+            'not comparable accuracy estimates.\n'
             '- `pred_semantic`: 0 = background, 1 = tree; source `classification` is preserved.\n\n'
+            '- `assignment_source`: 0 = unassigned, 1 = mask/support-fusion anchor, 2 = cross-head completion, '
+            '3 = vote-head instance (anchor or added), 4 = local centre-consistent recovery, 5 = added mask-head instance.\n'
+            '- `segmentation_status`: 0 = predicted background/ground, 1 = assigned instance, 2 = predicted tree without an instance. '
+            'This is a model diagnostic, not ground truth.\n\n'
             '`Segmentation3` contains the legacy crowns/treetops. `PointHead/Segmentation3` contains '
             'filled polygons and treetops derived from the new point masks; their `treeID` matches LAZ `tree_id`. '
-            'Both use EPSG:2180. The two branches are independent predictions and need not agree.\n\n'
+            'Both use EPSG:2180. The legacy vectors are unchanged; the final consensus uses evidence from both branches.\n\n'
             f'Mask postprocessing: `{selection["config"].get("merge_strategy", "legacy")}`. '
             'Support fusion, when selected, matches overlapping proposals to fixed tree anchors, '
-            'recovers nearby unassigned points and rebuilds polygons from the final support.\n\n'
+            'recovers nearby unassigned points and rebuilds polygons from the final support. '
+            'Dual consensus also matches centre-vote instances, can recover missing trees, and optionally performs '
+            'one-pass spatial/centre-consistent completion. It does not force every point into a tree.\n\n'
             'This is a compact adaptation of https://arxiv.org/abs/2606.08206 with LitePT-S, '
             '96 ISA queries and 3 masked cross-attention layers. It is not a reproduction of the paper\'s metrics. '
             'See `inference_report.json` and the training run\'s `point_comparison.json`/`experiments.xlsx`.\n',

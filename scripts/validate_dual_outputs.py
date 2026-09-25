@@ -12,7 +12,7 @@ PROJECT = Path(__file__).resolve().parents[1]
 
 def main():
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument('--output-dir', type=Path, default=PROJECT / 'output_17_dual_head_support_fusion')
+    p.add_argument('--output-dir', type=Path, default=PROJECT / 'output_19_dual_head_complete_consensus')
     p.add_argument('--preparation', type=Path, default=PROJECT / 'output_15_litept_v2_no_rectangles_pointcloud/work/preparation.json')
     args = p.parse_args()
     output = args.output_dir
@@ -68,6 +68,13 @@ def main():
             assert np.isfinite(cloud.height_agl).all()
             assert (ids[np.asarray(cloud.classification) == 2] == 0).all()
             assert (np.asarray(cloud.pred_semantic)[ids > 0] == 1).all()
+            if 'assignment_source' in set(cloud.point_format.dimension_names):
+                provenance = np.asarray(cloud.assignment_source)
+                status = np.asarray(cloud.segmentation_status)
+                assert set(np.unique(provenance)) <= {0, 1, 2, 3, 4, 5}
+                assert np.array_equal(provenance > 0, ids > 0)
+                assert np.array_equal(status == 1, ids > 0)
+                assert np.array_equal(status == 2, (ids == 0) & (np.asarray(cloud.pred_semantic) == 1))
             clouds.append(dict(file=path.name, points=len(ids), original_xyz_and_fields_equal=True,
                                labelled_points=int((ids > 0).sum()), ids_match_polygons=True))
             print(f'Validated {path.name}: {len(ids):,} original points', flush=True)

@@ -14,8 +14,8 @@ PROJECT = Path(__file__).resolve().parents[1]
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--before', type=Path, default=PROJECT / 'output_16_dual_head_satv2_pointcloud')
-    parser.add_argument('--after', type=Path, default=PROJECT / 'output_17_dual_head_support_fusion')
+    parser.add_argument('--before', type=Path, default=PROJECT / 'output_17_dual_head_support_fusion')
+    parser.add_argument('--after', type=Path, default=PROJECT / 'output_19_dual_head_complete_consensus')
     args = parser.parse_args()
     rows = []
     before_paths = sorted((args.before / 'PointClouds').glob('trees_*.laz'))

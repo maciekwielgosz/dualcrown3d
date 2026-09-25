@@ -150,12 +150,16 @@ class DualTests(unittest.TestCase):
                             tiles=[dict(tile_id='a', bounds=[100., 200., 101., 201.]),
                                    dict(tile_id='b', bounds=[101., 200., 102., 201.])])
             identifiers = np.array([0, 7] * 4, np.uint32)
-            report = export_laz(root, arrays, metadata, identifiers, identifiers, np.ones(8), (identifiers > 0).astype(np.uint8))
+            provenance = np.array([0, 2, 0, 3, 0, 4, 0, 5], dtype=np.uint8)
+            report = export_laz(root, arrays, metadata, identifiers, identifiers, np.ones(8),
+                                (identifiers > 0).astype(np.uint8), provenance)
             self.assertEqual(sum(r['points'] for r in report), 8)
             for tile in ('a', 'b'):
                 restored = laspy.read(root / f'PointClouds/trees_{tile}.laz')
                 self.assertEqual(set(np.unique(restored.tree_id)), {0, 7})
                 self.assertTrue((np.asarray(restored.tree_id)[np.asarray(restored.classification) == 2] == 0).all())
+                np.testing.assert_array_equal(restored.assignment_source, provenance[:4] if tile == 'a' else provenance[4:])
+                np.testing.assert_array_equal(restored.segmentation_status, [0, 1, 0, 1])
 
     def fusion_fixture(self, masks, quality=None):
         xyz = np.array([[x*.5, y*.5, 5.] for x in range(12) for y in range(4)], np.float32)

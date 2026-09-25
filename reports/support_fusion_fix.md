@@ -90,10 +90,13 @@ Run from `DL_model_version` with the prepared data and the checkpoint available:
   --family vote --output-dir outputs/dual_head_support_fusion_v2/vote \
   --cache-dir outputs/dual_head_support_fusion_v2/raw_val
 .venv-gpu/bin/python scripts/predict_dual_head.py --stage export \
-  --raw-predictions output_16_dual_head_satv2_pointcloud/work/dual_predictions.npz
+  --selection configs/dual_head_inference.json \
+  --raw-predictions output_16_dual_head_satv2_pointcloud/work/dual_predictions.npz \
+  --output-dir output_17_dual_head_support_fusion
 .venv-gpu/bin/python scripts/validate_dual_outputs.py \
   --output-dir output_17_dual_head_support_fusion
-.venv-gpu/bin/python scripts/compare_dual_point_coverage.py
+.venv-gpu/bin/python scripts/compare_dual_point_coverage.py \
+  --before output_16_dual_head_satv2_pointcloud --after output_17_dual_head_support_fusion
 ```
 
 The new output directory contains `PointClouds/trees_*.laz`, the legacy vectors
