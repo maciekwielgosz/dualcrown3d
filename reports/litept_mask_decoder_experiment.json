@@ -1,0 +1,67 @@
+{
+  "acceptance_criterion": "outperform the existing direct LitePT point-cloud model and approach CHM-only YOLO11s-seg",
+  "architecture": {
+    "backbone": "LitePT-S",
+    "decoder": "lightweight Mask3D-style 64-query transformer",
+    "decoder_layers": 3,
+    "hidden_dimension": 128,
+    "memory_tokens": 2048,
+    "spatial_prior": "FPS query anchors plus learned XY center and radius",
+    "training_matching": "Hungarian object + mask BCE + Dice + center/radius costs"
+  },
+  "checkpoint": {
+    "best_epoch": 25,
+    "completed_epochs": 33,
+    "parameters": 13579550,
+    "path": "outputs/training/litept_mask_decoder_spatial_prior/weights/best.pt",
+    "sha256": "3beb362eef3c60cd67e9c6e5b770b401a4a0dc22753d3de45fa780ab319e3936",
+    "validation_crop_matched_mask_iou": 0.45991363326708473
+  },
+  "data": {
+    "input": "direct voxelized XYZ plus normalized intensity",
+    "test_plots": 11,
+    "train_plots": 209,
+    "training_sources": {
+      "FOR-instance": 16,
+      "ideas_als": 193
+    },
+    "validation_plots": 5
+  },
+  "density_augmentation_keep_fractions": [
+    0.025,
+    0.05,
+    0.1,
+    0.25,
+    0.5,
+    1.0
+  ],
+  "evaluation": {
+    "config_selected_on": "FOR-instance validation only",
+    "geospatial_outputs": "outputs/evaluation/litept_mask_decoder_spatial_prior/geospatial",
+    "instance_match": "Hungarian one-to-one at 2D crown IoU >= 0.5",
+    "test": {
+      "f1": 0.1348314606741573,
+      "panoptic_quality": 0.07790347724839262,
+      "precision": 0.09113924050632911,
+      "recall": 0.2589928057553957,
+      "segmentation_quality": 0.5777841229255787
+    },
+    "validation": {
+      "f1": 0.16115702479338842,
+      "precision": 0.11370262390670553,
+      "recall": 0.2765957446808511
+    }
+  },
+  "reference_results": {
+    "CHM-only_YOLO11s_seg_test_f1": 0.736,
+    "direct_LitePT_semantic_offset_test_f1": 0.382,
+    "query_decoder_without_effective_spatial_locality_test_f1": 0.064
+  },
+  "speed": {
+    "gpu_inference_seconds_for_11_test_plots": 8.756847143173218,
+    "source_voxels": 3188401,
+    "source_voxels_per_second": 364103.76336027024
+  },
+  "status": "negative result: fast, but not promoted because accuracy is below both the direct LitePT and CHM-only YOLO baselines",
+  "test_used_for_model_or_threshold_selection": false
+}

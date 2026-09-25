@@ -1,0 +1,63 @@
+{
+  "acceptance_criterion": "direct point-cloud model should outperform CHM-only YOLO11s-seg",
+  "acceptance_met": false,
+  "architecture": {
+    "backbone": "LitePT-S",
+    "input": [
+      "centered_x",
+      "centered_y",
+      "height",
+      "normalized_intensity"
+    ],
+    "instance_head": "tree/background logits plus 3-D offset to instance center",
+    "parameters": 12714809,
+    "postprocessing": "2-D center-vote density peaks and nearest-vote assignment",
+    "voxel_size_m": 0.25
+  },
+  "benchmark_export": {
+    "crowns_by_tile": {
+      "764000_197000": 362,
+      "764000_197500": 139,
+      "764500_197000": 329,
+      "764500_197500": 448
+    },
+    "invalid_geometries": 0,
+    "output": "output_14_litept_pointcloud/Segmentation3",
+    "total_crowns": 1278
+  },
+  "comparison": {
+    "chm_only_yolo11s_test_f1": 0.736,
+    "litept_direct_test_f1": 0.3822222222222223,
+    "recommended_model": "CHM-only YOLO11s-seg"
+  },
+  "dataset": {
+    "ideas_official_test_used": false,
+    "test_plots": 11,
+    "train_plots": 209,
+    "validation_plots": 5
+  },
+  "selected_checkpoint": "outputs/training/litept_tree_instance/weights/best.pt",
+  "selection": {
+    "checkpoint_epoch": 25,
+    "cluster_parameters_selected_on": "FOR-instance validation only",
+    "test_used_for_selection": false,
+    "validation_f1": 0.3588039867109635
+  },
+  "test": {
+    "false_negatives": 149,
+    "false_positives": 268,
+    "f1": 0.3822222222222223,
+    "ground_truth_instances": 278,
+    "panoptic_quality": 0.24194818639183244,
+    "precision": 0.3249370277078086,
+    "predicted_instances": 397,
+    "recall": 0.46402877697841727,
+    "segmentation_quality": 0.6330039760251429,
+    "true_positives": 129
+  },
+  "test_network_speed": {
+    "seconds": 5.036108553409576,
+    "source_voxels": 3188401,
+    "voxels_per_second": 633108.0766401212
+  }
+}
