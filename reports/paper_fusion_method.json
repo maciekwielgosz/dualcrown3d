@@ -1,0 +1,9 @@
+{
+  "density_colormap": "turbo",
+  "feature_formula": "color_value = 0.65 * normalized_feature + 0.35 * normalized_CHM",
+  "input_channels_use_tree_id": false,
+  "intensity_colormap": "viridis",
+  "minimum_canopy_height_m": 2.0,
+  "rgb_fusion": "arithmetic mean of density RGB and intensity RGB",
+  "status": "paper-inspired approximation; exact authors' code unavailable"
+}

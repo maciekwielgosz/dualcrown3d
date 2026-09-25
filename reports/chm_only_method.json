@@ -1,0 +1,13 @@
+{
+  "chm_clip_max_m": 45.0,
+  "encoding": "normalized CHM repeated identically into R, G and B",
+  "experiment": "CHM-only ablation",
+  "input_channels_use_tree_id": false,
+  "plots_by_split": {
+    "test": 11,
+    "train": 16,
+    "val": 5
+  },
+  "source_feature": "leakage-free CHM derived without treeID",
+  "split_reused_from": "/home/maciej.wielgosz/Projects/segm/DL_model_version/manifests/dataset_manifest.csv"
+}

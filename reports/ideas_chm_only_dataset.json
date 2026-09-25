@@ -1,0 +1,33 @@
+{
+  "chm_clip_max_m": 45.0,
+  "dataset": "ideas_als/dev + FOR-instance",
+  "ideas_annotation_methods": {
+    "crown_overlay": 114,
+    "point_native": 79
+  },
+  "ideas_collections": {
+    "CEDAR_CYPRESS": 34,
+    "ECODSE": 30,
+    "FGI_EMIT": 13,
+    "IDTREES": 84,
+    "LA_PALMA": 1,
+    "SEPILOK": 1,
+    "WILDFOREST3D": 29,
+    "WYTHAM": 1
+  },
+  "ideas_official_test_used": false,
+  "input_channels_use_tree_id": false,
+  "input_encoding": "normalized CHM repeated identically into RGB",
+  "instances_by_split": {
+    "test": 278,
+    "train": 6892,
+    "val": 141
+  },
+  "label_encoding_ideas": "convex hull of 0.5 m cells occupied by treeID points",
+  "pixel_size_m": 0.5,
+  "plots_by_split": {
+    "test": 11,
+    "train": 209,
+    "val": 5
+  }
+}

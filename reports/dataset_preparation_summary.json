@@ -1,0 +1,663 @@
+{
+  "elapsed_seconds": 0.7008633689997623,
+  "input_channel_order": [
+    "CHM",
+    "density",
+    "mean_intensity"
+  ],
+  "input_channels_use_tree_id": false,
+  "instances_by_split": {
+    "test": 278,
+    "train": 520,
+    "val": 141
+  },
+  "pixel_size_m": 0.5,
+  "plots": 32,
+  "plots_by_split": {
+    "test": 11,
+    "train": 16,
+    "val": 5
+  },
+  "preparation": [
+    {
+      "area_retained_fraction": 1.0,
+      "channel_order": [
+        "chm",
+        "density",
+        "mean_intensity"
+      ],
+      "chm_clip_max_m": 45.0,
+      "dataset_id": "CULS_plot_1_annotated",
+      "density_clip_count": 3323.199999999967,
+      "density_transform": "log1p",
+      "elapsed_seconds": 0.049847,
+      "intensity_clip_high": 25805.05529349364,
+      "intensity_clip_low": 746.8000000000006,
+      "multipart_instances": 0,
+      "source_instances": 6,
+      "split": "val",
+      "status": "reused",
+      "written_instances": 6
+    },
+    {
+      "area_retained_fraction": 0.9980285855101035,
+      "channel_order": [
+        "chm",
+        "density",
+        "mean_intensity"
+      ],
+      "chm_clip_max_m": 45.0,
+      "dataset_id": "CULS_plot_2_annotated",
+      "density_clip_count": 2591.4999999999973,
+      "density_transform": "log1p",
+      "elapsed_seconds": 0.020213,
+      "intensity_clip_high": 23472.34422702402,
+      "intensity_clip_low": 3956.890000000001,
+      "multipart_instances": 3,
+      "source_instances": 20,
+      "split": "test",
+      "status": "reused",
+      "written_instances": 20
+    },
+    {
+      "area_retained_fraction": 0.9979919678714859,
+      "channel_order": [
+        "chm",
+        "density",
+        "mean_intensity"
+      ],
+      "chm_clip_max_m": 45.0,
+      "dataset_id": "CULS_plot_3_annotated",
+      "density_clip_count": 2470.2850000000053,
+      "density_transform": "log1p",
+      "elapsed_seconds": 0.022138,
+      "intensity_clip_high": 23501.435845729193,
+      "intensity_clip_low": 2215.635,
+      "multipart_instances": 2,
+      "source_instances": 21,
+      "split": "train",
+      "status": "reused",
+      "written_instances": 21
+    },
+    {
+      "area_retained_fraction": 0.9973386560212908,
+      "channel_order": [
+        "chm",
+        "density",
+        "mean_intensity"
+      ],
+      "chm_clip_max_m": 45.0,
+      "dataset_id": "NIBIO_plot_1_annotated",
+      "density_clip_count": 7580.240000000003,
+      "density_transform": "log1p",
+      "elapsed_seconds": 0.021884,
+      "intensity_clip_high": 26742.91862750964,
+      "intensity_clip_low": 16239.590555555556,
+      "multipart_instances": 3,
+      "source_instances": 26,
+      "split": "test",
+      "status": "reused",
+      "written_instances": 26
+    },
+    {
+      "area_retained_fraction": 0.9898523985239852,
+      "channel_order": [
+        "chm",
+        "density",
+        "mean_intensity"
+      ],
+      "chm_clip_max_m": 45.0,
+      "dataset_id": "NIBIO_plot_10_annotated",
+      "density_clip_count": 6231.75,
+      "density_transform": "log1p",
+      "elapsed_seconds": 0.021221,
+      "intensity_clip_high": 25713.44972170817,
+      "intensity_clip_low": 16270.402272727273,
+      "multipart_instances": 7,
+      "source_instances": 21,
+      "split": "train",
+      "status": "reused",
+      "written_instances": 21
+    },
+    {
+      "area_retained_fraction": 0.9958881578947368,
+      "channel_order": [
+        "chm",
+        "density",
+        "mean_intensity"
+      ],
+      "chm_clip_max_m": 45.0,
+      "dataset_id": "NIBIO_plot_11_annotated",
+      "density_clip_count": 12249.200000000017,
+      "density_transform": "log1p",
+      "elapsed_seconds": 0.022728,
+      "intensity_clip_high": 26967.565140064125,
+      "intensity_clip_low": 17566.632,
+      "multipart_instances": 3,
+      "source_instances": 25,
+      "split": "train",
+      "status": "reused",
+      "written_instances": 25
+    },
+    {
+      "area_retained_fraction": 0.9947780678851175,
+      "channel_order": [
+        "chm",
+        "density",
+        "mean_intensity"
+      ],
+      "chm_clip_max_m": 45.0,
+      "dataset_id": "NIBIO_plot_12_annotated",
+      "density_clip_count": 13117.60499999979,
+      "density_transform": "log1p",
+      "elapsed_seconds": 0.020135,
+      "intensity_clip_high": 25847.28647532803,
+      "intensity_clip_low": 15725.034666666666,
+      "multipart_instances": 5,
+      "source_instances": 19,
+      "split": "train",
+      "status": "reused",
+      "written_instances": 19
+    },
+    {
+      "area_retained_fraction": 0.994579945799458,
+      "channel_order": [
+        "chm",
+        "density",
+        "mean_intensity"
+      ],
+      "chm_clip_max_m": 45.0,
+      "dataset_id": "NIBIO_plot_13_annotated",
+      "density_clip_count": 11643.640000000012,
+      "density_transform": "log1p",
+      "elapsed_seconds": 0.021528,
+      "intensity_clip_high": 26567.324586345927,
+      "intensity_clip_low": 17531.738340829583,
+      "multipart_instances": 3,
+      "source_instances": 29,
+      "split": "val",
+      "status": "reused",
+      "written_instances": 29
+    },
+    {
+      "area_retained_fraction": 0.9839932603201348,
+      "channel_order": [
+        "chm",
+        "density",
+        "mean_intensity"
+      ],
+      "chm_clip_max_m": 45.0,
+      "dataset_id": "NIBIO_plot_16_annotated",
+      "density_clip_count": 11075.179999999944,
+      "density_transform": "log1p",
+      "elapsed_seconds": 0.022483,
+      "intensity_clip_high": 26248.666576709496,
+      "intensity_clip_low": 16000.992070619006,
+      "multipart_instances": 7,
+      "source_instances": 30,
+      "split": "train",
+      "status": "reused",
+      "written_instances": 30
+    },
+    {
+      "area_retained_fraction": 0.989983305509182,
+      "channel_order": [
+        "chm",
+        "density",
+        "mean_intensity"
+      ],
+      "chm_clip_max_m": 45.0,
+      "dataset_id": "NIBIO_plot_17_annotated",
+      "density_clip_count": 13316.05,
+      "density_transform": "log1p",
+      "elapsed_seconds": 0.022107,
+      "intensity_clip_high": 26635.8365551087,
+      "intensity_clip_low": 15994.821299790356,
+      "multipart_instances": 5,
+      "source_instances": 27,
+      "split": "test",
+      "status": "reused",
+      "written_instances": 27
+    },
+    {
+      "area_retained_fraction": 0.9967462039045553,
+      "channel_order": [
+        "chm",
+        "density",
+        "mean_intensity"
+      ],
+      "chm_clip_max_m": 45.0,
+      "dataset_id": "NIBIO_plot_18_annotated",
+      "density_clip_count": 13144.07999999999,
+      "density_transform": "log1p",
+      "elapsed_seconds": 0.019448,
+      "intensity_clip_high": 26493.079599430366,
+      "intensity_clip_low": 15915.143333333333,
+      "multipart_instances": 3,
+      "source_instances": 23,
+      "split": "test",
+      "status": "reused",
+      "written_instances": 23
+    },
+    {
+      "area_retained_fraction": 0.9934823091247672,
+      "channel_order": [
+        "chm",
+        "density",
+        "mean_intensity"
+      ],
+      "chm_clip_max_m": 45.0,
+      "dataset_id": "NIBIO_plot_19_annotated",
+      "density_clip_count": 11874.125,
+      "density_transform": "log1p",
+      "elapsed_seconds": 0.021711,
+      "intensity_clip_high": 26541.714052734776,
+      "intensity_clip_low": 16173.81576819407,
+      "multipart_instances": 3,
+      "source_instances": 31,
+      "split": "val",
+      "status": "reused",
+      "written_instances": 31
+    },
+    {
+      "area_retained_fraction": 0.9843342036553525,
+      "channel_order": [
+        "chm",
+        "density",
+        "mean_intensity"
+      ],
+      "chm_clip_max_m": 45.0,
+      "dataset_id": "NIBIO_plot_2_annotated",
+      "density_clip_count": 7900.295000000003,
+      "density_transform": "log1p",
+      "elapsed_seconds": 0.022349,
+      "intensity_clip_high": 26815.40859478858,
+      "intensity_clip_low": 15695.875948275861,
+      "multipart_instances": 10,
+      "source_instances": 31,
+      "split": "train",
+      "status": "reused",
+      "written_instances": 31
+    },
+    {
+      "area_retained_fraction": 0.9939455095862765,
+      "channel_order": [
+        "chm",
+        "density",
+        "mean_intensity"
+      ],
+      "chm_clip_max_m": 45.0,
+      "dataset_id": "NIBIO_plot_21_annotated",
+      "density_clip_count": 11736.449999999966,
+      "density_transform": "log1p",
+      "elapsed_seconds": 0.021649,
+      "intensity_clip_high": 26450.18427270712,
+      "intensity_clip_low": 16957.065,
+      "multipart_instances": 4,
+      "source_instances": 19,
+      "split": "train",
+      "status": "reused",
+      "written_instances": 19
+    },
+    {
+      "area_retained_fraction": 0.991971454058876,
+      "channel_order": [
+        "chm",
+        "density",
+        "mean_intensity"
+      ],
+      "chm_clip_max_m": 45.0,
+      "dataset_id": "NIBIO_plot_22_annotated",
+      "density_clip_count": 10973.600000000008,
+      "density_transform": "log1p",
+      "elapsed_seconds": 0.018599,
+      "intensity_clip_high": 26505.24724784907,
+      "intensity_clip_low": 16203.116666666667,
+      "multipart_instances": 5,
+      "source_instances": 19,
+      "split": "test",
+      "status": "reused",
+      "written_instances": 19
+    },
+    {
+      "area_retained_fraction": 0.9935125115848007,
+      "channel_order": [
+        "chm",
+        "density",
+        "mean_intensity"
+      ],
+      "chm_clip_max_m": 45.0,
+      "dataset_id": "NIBIO_plot_23_annotated",
+      "density_clip_count": 12509.599999999893,
+      "density_transform": "log1p",
+      "elapsed_seconds": 0.021067,
+      "intensity_clip_high": 26527.595886006387,
+      "intensity_clip_low": 15989.625411764706,
+      "multipart_instances": 4,
+      "source_instances": 23,
+      "split": "test",
+      "status": "reused",
+      "written_instances": 23
+    },
+    {
+      "area_retained_fraction": 0.993480032599837,
+      "channel_order": [
+        "chm",
+        "density",
+        "mean_intensity"
+      ],
+      "chm_clip_max_m": 45.0,
+      "dataset_id": "NIBIO_plot_3_annotated",
+      "density_clip_count": 8779.83999999999,
+      "density_transform": "log1p",
+      "elapsed_seconds": 0.01937,
+      "intensity_clip_high": 26715.00504738503,
+      "intensity_clip_low": 15174.56,
+      "multipart_instances": 4,
+      "source_instances": 22,
+      "split": "train",
+      "status": "reused",
+      "written_instances": 22
+    },
+    {
+      "area_retained_fraction": 0.9877650897226754,
+      "channel_order": [
+        "chm",
+        "density",
+        "mean_intensity"
+      ],
+      "chm_clip_max_m": 45.0,
+      "dataset_id": "NIBIO_plot_4_annotated",
+      "density_clip_count": 9312.699999999915,
+      "density_transform": "log1p",
+      "elapsed_seconds": 0.019203,
+      "intensity_clip_high": 26427.923435736684,
+      "intensity_clip_low": 15338.52,
+      "multipart_instances": 8,
+      "source_instances": 22,
+      "split": "train",
+      "status": "reused",
+      "written_instances": 22
+    },
+    {
+      "area_retained_fraction": 0.997828447339848,
+      "channel_order": [
+        "chm",
+        "density",
+        "mean_intensity"
+      ],
+      "chm_clip_max_m": 45.0,
+      "dataset_id": "NIBIO_plot_5_annotated",
+      "density_clip_count": 8523.11,
+      "density_transform": "log1p",
+      "elapsed_seconds": 0.018343,
+      "intensity_clip_high": 26755.01499092748,
+      "intensity_clip_low": 16783.932,
+      "multipart_instances": 2,
+      "source_instances": 18,
+      "split": "test",
+      "status": "reused",
+      "written_instances": 18
+    },
+    {
+      "area_retained_fraction": 0.9893617021276596,
+      "channel_order": [
+        "chm",
+        "density",
+        "mean_intensity"
+      ],
+      "chm_clip_max_m": 45.0,
+      "dataset_id": "NIBIO_plot_6_annotated",
+      "density_clip_count": 6255.125000000004,
+      "density_transform": "log1p",
+      "elapsed_seconds": 0.021392,
+      "intensity_clip_high": 26465.068171229734,
+      "intensity_clip_low": 16196.459565217392,
+      "multipart_instances": 6,
+      "source_instances": 30,
+      "split": "val",
+      "status": "reused",
+      "written_instances": 30
+    },
+    {
+      "area_retained_fraction": 0.9939393939393939,
+      "channel_order": [
+        "chm",
+        "density",
+        "mean_intensity"
+      ],
+      "chm_clip_max_m": 45.0,
+      "dataset_id": "NIBIO_plot_7_annotated",
+      "density_clip_count": 7503.049999999996,
+      "density_transform": "log1p",
+      "elapsed_seconds": 0.01909,
+      "intensity_clip_high": 27024.318094197402,
+      "intensity_clip_low": 15186.894583333333,
+      "multipart_instances": 3,
+      "source_instances": 20,
+      "split": "train",
+      "status": "reused",
+      "written_instances": 20
+    },
+    {
+      "area_retained_fraction": 0.9941908713692946,
+      "channel_order": [
+        "chm",
+        "density",
+        "mean_intensity"
+      ],
+      "chm_clip_max_m": 45.0,
+      "dataset_id": "NIBIO_plot_8_annotated",
+      "density_clip_count": 9487.760000000002,
+      "density_transform": "log1p",
+      "elapsed_seconds": 0.017863,
+      "intensity_clip_high": 26431.656717621136,
+      "intensity_clip_low": 15309.356470588236,
+      "multipart_instances": 3,
+      "source_instances": 21,
+      "split": "train",
+      "status": "reused",
+      "written_instances": 21
+    },
+    {
+      "area_retained_fraction": 0.9935661764705882,
+      "channel_order": [
+        "chm",
+        "density",
+        "mean_intensity"
+      ],
+      "chm_clip_max_m": 45.0,
+      "dataset_id": "NIBIO_plot_9_annotated",
+      "density_clip_count": 7683.915000000043,
+      "density_transform": "log1p",
+      "elapsed_seconds": 0.017511,
+      "intensity_clip_high": 26367.550025578585,
+      "intensity_clip_low": 15250.51,
+      "multipart_instances": 3,
+      "source_instances": 18,
+      "split": "train",
+      "status": "reused",
+      "written_instances": 18
+    },
+    {
+      "area_retained_fraction": 0.9907407407407407,
+      "channel_order": [
+        "chm",
+        "density",
+        "mean_intensity"
+      ],
+      "chm_clip_max_m": 45.0,
+      "dataset_id": "RMIT_test",
+      "density_clip_count": 400.105,
+      "density_transform": "log1p",
+      "elapsed_seconds": 0.021717,
+      "intensity_clip_high": 31057.867774066563,
+      "intensity_clip_low": 0.0,
+      "multipart_instances": 6,
+      "source_instances": 57,
+      "split": "test",
+      "status": "reused",
+      "written_instances": 57
+    },
+    {
+      "area_retained_fraction": 0.9892555640828856,
+      "channel_order": [
+        "chm",
+        "density",
+        "mean_intensity"
+      ],
+      "chm_clip_max_m": 45.0,
+      "dataset_id": "RMIT_train",
+      "density_clip_count": 585.2399999999998,
+      "density_transform": "log1p",
+      "elapsed_seconds": 0.038205,
+      "intensity_clip_high": 31031.494197012922,
+      "intensity_clip_low": 0.0,
+      "multipart_instances": 19,
+      "source_instances": 139,
+      "split": "train",
+      "status": "reused",
+      "written_instances": 139
+    },
+    {
+      "area_retained_fraction": 0.9913586173787806,
+      "channel_order": [
+        "chm",
+        "density",
+        "mean_intensity"
+      ],
+      "chm_clip_max_m": 45.0,
+      "dataset_id": "SCION_plot_31_annotated",
+      "density_clip_count": 5394.840000000011,
+      "density_transform": "log1p",
+      "elapsed_seconds": 0.017993,
+      "intensity_clip_high": 182.57843204467338,
+      "intensity_clip_low": 81.446,
+      "multipart_instances": 8,
+      "source_instances": 25,
+      "split": "test",
+      "status": "reused",
+      "written_instances": 25
+    },
+    {
+      "area_retained_fraction": 0.9958061509785647,
+      "channel_order": [
+        "chm",
+        "density",
+        "mean_intensity"
+      ],
+      "chm_clip_max_m": 45.0,
+      "dataset_id": "SCION_plot_35_annotated",
+      "density_clip_count": 5233.925000000016,
+      "density_transform": "log1p",
+      "elapsed_seconds": 0.014694,
+      "intensity_clip_high": 176.20323267442856,
+      "intensity_clip_low": 92.85480769230769,
+      "multipart_instances": 5,
+      "source_instances": 19,
+      "split": "train",
+      "status": "reused",
+      "written_instances": 19
+    },
+    {
+      "area_retained_fraction": 0.968149646107179,
+      "channel_order": [
+        "chm",
+        "density",
+        "mean_intensity"
+      ],
+      "chm_clip_max_m": 45.0,
+      "dataset_id": "SCION_plot_39_annotated",
+      "density_clip_count": 3637.035,
+      "density_transform": "log1p",
+      "elapsed_seconds": 0.018323,
+      "intensity_clip_high": 183.08470807581062,
+      "intensity_clip_low": 62.0,
+      "multipart_instances": 9,
+      "source_instances": 45,
+      "split": "val",
+      "status": "reused",
+      "written_instances": 45
+    },
+    {
+      "area_retained_fraction": 0.9966329966329966,
+      "channel_order": [
+        "chm",
+        "density",
+        "mean_intensity"
+      ],
+      "chm_clip_max_m": 45.0,
+      "dataset_id": "SCION_plot_61_annotated",
+      "density_clip_count": 6152.530000000004,
+      "density_transform": "log1p",
+      "elapsed_seconds": 0.013311,
+      "intensity_clip_high": 175.12981897259377,
+      "intensity_clip_low": 80.93666666666667,
+      "multipart_instances": 3,
+      "source_instances": 15,
+      "split": "test",
+      "status": "reused",
+      "written_instances": 15
+    },
+    {
+      "area_retained_fraction": 0.9921683798335781,
+      "channel_order": [
+        "chm",
+        "density",
+        "mean_intensity"
+      ],
+      "chm_clip_max_m": 45.0,
+      "dataset_id": "SCION_plot_87_annotated",
+      "density_clip_count": 5711.819999999998,
+      "density_transform": "log1p",
+      "elapsed_seconds": 0.014552,
+      "intensity_clip_high": 173.778161101928,
+      "intensity_clip_low": 79.88,
+      "multipart_instances": 6,
+      "source_instances": 20,
+      "split": "train",
+      "status": "reused",
+      "written_instances": 20
+    },
+    {
+      "area_retained_fraction": 0.9884437596302003,
+      "channel_order": [
+        "chm",
+        "density",
+        "mean_intensity"
+      ],
+      "chm_clip_max_m": 45.0,
+      "dataset_id": "TUWIEN_test",
+      "density_clip_count": 1571.5999999999967,
+      "density_transform": "log1p",
+      "elapsed_seconds": 0.017443,
+      "intensity_clip_high": 1749.983465517242,
+      "intensity_clip_low": 730.9982,
+      "multipart_instances": 8,
+      "source_instances": 25,
+      "split": "test",
+      "status": "reused",
+      "written_instances": 25
+    },
+    {
+      "area_retained_fraction": 0.9829069017415609,
+      "channel_order": [
+        "chm",
+        "density",
+        "mean_intensity"
+      ],
+      "chm_clip_max_m": 45.0,
+      "dataset_id": "TUWIEN_train",
+      "density_clip_count": 2151.1200000000026,
+      "density_transform": "log1p",
+      "elapsed_seconds": 0.028368,
+      "intensity_clip_high": 1771.4881368137387,
+      "intensity_clip_low": 913.48,
+      "multipart_instances": 31,
+      "source_instances": 73,
+      "split": "train",
+      "status": "reused",
+      "written_instances": 73
+    }
+  ]
+}
