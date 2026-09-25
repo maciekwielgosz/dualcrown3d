@@ -1,13 +1,12 @@
 """Scene-wide mask deduplication and integer instance IDs for both GIS and LAS."""
 import numpy as np
+from shapely import intersects_xy
 from scipy.optimize import linear_sum_assignment
+from scipy.spatial import cKDTree
 from shapely.geometry import MultiPoint, Polygon
 
 
-def merge_masks(arrays, raw, config):
-    count = len(arrays['coord'])
-    labels = np.zeros(count, np.uint32)
-    confidence = np.zeros(count, np.float32)
+def _mask_candidates(raw, config):
     candidates = []
     offsets = raw['candidate_offset']
     for i, score in enumerate(raw['object_score']):
@@ -24,8 +23,15 @@ def merge_masks(arrays, raw, config):
             continue
         ranking = float(score * scores.mean())
         candidates.append((ranking, indices, scores, float(score)))
+    return sorted(candidates, key=lambda x: -x[0])
+
+
+def _legacy_merge(arrays, candidates, config):
+    count = len(arrays['coord'])
+    labels = np.zeros(count, np.uint32)
+    confidence = np.zeros(count, np.float32)
     instances = []
-    for ranking, indices, scores, object_score in sorted(candidates, key=lambda x: -x[0]):
+    for ranking, indices, scores, object_score in candidates:
         claimed = labels[indices] > 0
         # SATv2-style asymmetric support overlap against the accepted union.
         if claimed.mean() > config['merge_overlap']:
@@ -49,6 +55,111 @@ def merge_masks(arrays, raw, config):
         instances.append(dict(tree_id=identifier, geometry=geometry, confidence=ranking,
                               points=len(ids), height=float(xyz[top, 2]),
                               top_x=float(xy[top, 0]), top_y=float(xy[top, 1])))
+    return labels, confidence, instances
+
+
+def _instance_members(labels):
+    """Group labelled indices once, without scanning the entire cloud per tree."""
+    indices = np.flatnonzero(labels)
+    if not len(indices):
+        return []
+    indices = indices[np.argsort(labels[indices], kind='stable')]
+    boundaries = np.flatnonzero(np.diff(labels[indices])) + 1
+    return np.split(indices, boundaries)
+
+
+def merge_masks(arrays, raw, config):
+    """Deduplicate masks and optionally fuse complementary point support.
+
+    Missing ``merge_strategy`` means the historical suppression algorithm, so
+    archived selections remain reproducible. ``support_fusion_v2`` freezes its
+    accepted masks as anchors, then matches proposals against those ORIGINAL
+    point sets. Only previously unassigned, nearby points can be recovered.
+    Anchor labels never change; recovered points never create transitive links.
+    """
+    strategy = config.get('merge_strategy', 'legacy')
+    if strategy not in ('legacy', 'support_fusion_v2'):
+        raise ValueError(f'Unknown merge strategy: {strategy}')
+    candidates = _mask_candidates(raw, config)
+    labels, confidence, instances = _legacy_merge(arrays, candidates, config)
+    if strategy == 'legacy' or not instances:
+        return labels, confidence, instances
+
+    min_iou = float(config.get('fusion_min_iou', .2))
+    dominance = float(config.get('fusion_dominance', .8))
+    distance = float(config.get('fusion_max_distance_m', 1.5))
+    probability = float(config.get('fusion_min_probability', config['mask_threshold']))
+    vote_distance = config.get('fusion_max_vote_distance_m')
+    if vote_distance is not None:
+        vote_distance = float(vote_distance)
+        if vote_distance <= 0 or 'shifted_center' not in raw:
+            raise ValueError('Vote-guided fusion requires shifted_center and a positive vote distance')
+    if not (0 < min_iou <= 1 and .5 < dominance <= 1 and distance > 0
+            and config['mask_threshold'] <= probability <= 1):
+        raise ValueError('Invalid support fusion thresholds')
+
+    anchors = labels.copy()
+    counts = np.bincount(anchors, minlength=len(instances) + 1)
+    members = _instance_members(anchors)
+    trees = {}
+    hulls = {}
+    vote_centers = {}
+    # Confidence weighted by mask-to-anchor affinity resolves competing offers
+    # for unassigned points. This score is separate from exported confidence.
+    best_offer = np.zeros(len(labels), np.float32)
+    for ranking, indices, scores, object_score in candidates:
+        claimed = anchors[indices]
+        identifiers, overlap = np.unique(claimed[claimed > 0], return_counts=True)
+        if not len(identifiers):
+            continue
+        winner = int(overlap.argmax())
+        identifier, intersection = int(identifiers[winner]), int(overlap[winner])
+        if intersection / overlap.sum() < dominance:
+            continue  # Ambiguous proposals must not bridge neighbouring trees.
+        affinity = intersection / (len(indices) + counts[identifier] - intersection)
+        if affinity < min_iou:
+            continue
+        eligible = (claimed == 0) & (scores >= probability)
+        proposed, probabilities = indices[eligible], scores[eligible]
+        offers = (probabilities * object_score * affinity).astype(np.float32)
+        better = offers > best_offer[proposed]
+        proposed, probabilities, offers = proposed[better], probabilities[better], offers[better]
+        if not len(proposed):
+            continue
+        if vote_distance is not None:
+            if identifier not in vote_centers:
+                vote_centers[identifier] = np.median(raw['shifted_center'][members[identifier - 1], :2], axis=0)
+            delta = raw['shifted_center'][proposed, :2] - vote_centers[identifier]
+            consistent = np.einsum('ij,ij->i', delta, delta) <= vote_distance**2
+            proposed, probabilities, offers = proposed[consistent], probabilities[consistent], offers[consistent]
+            if not len(proposed):
+                continue
+        if config.get('fusion_inside_hull', False):
+            if identifier not in hulls:
+                hulls[identifier] = MultiPoint(arrays['coord'][members[identifier - 1], :2]).convex_hull
+            xy = arrays['coord'][proposed, :2]
+            inside = intersects_xy(hulls[identifier], xy[:, 0], xy[:, 1])
+            proposed, probabilities, offers = proposed[inside], probabilities[inside], offers[inside]
+            if not len(proposed):
+                continue
+        if identifier not in trees:
+            trees[identifier] = cKDTree(arrays['coord'][members[identifier - 1]])
+        distances, _ = trees[identifier].query(arrays['coord'][proposed], distance_upper_bound=distance)
+        near = np.isfinite(distances)
+        proposed, probabilities, offers = proposed[near], probabilities[near], offers[near]
+        labels[proposed] = identifier
+        confidence[proposed] = probabilities * object_score
+        best_offer[proposed] = offers
+
+    # Rebuild polygons AND treetops from the final support, keeping IDs aligned
+    # with the point cloud. These filled hulls do not invent point labels.
+    for item, indices in zip(instances, _instance_members(labels)):
+        xyz = arrays['coord'][indices]
+        xy = xyz[:, :2].astype(np.float64) + arrays['source_origin'][:2]
+        geometry = MultiPoint(xy).convex_hull.buffer(float(arrays['voxel_size']) / 2.)
+        top = xyz[:, 2].argmax()
+        item.update(geometry=Polygon(geometry.exterior), points=len(indices),
+                    height=float(xyz[top, 2]), top_x=float(xy[top, 0]), top_y=float(xy[top, 1]))
     return labels, confidence, instances
 
 

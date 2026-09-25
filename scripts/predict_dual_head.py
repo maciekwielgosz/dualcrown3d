@@ -241,12 +241,16 @@ def export_laz(output, arrays, metadata, new_ids, old_ids, confidence, semantic)
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--checkpoint', type=Path, default=PROJECT / 'outputs/dual_head_satv2_litept_v3/weights/best.pt')
-    p.add_argument('--selection', type=Path, default=PROJECT / 'outputs/dual_head_satv2_litept_v3/selected.json')
+    p.add_argument('--selection', type=Path, default=PROJECT / 'configs/dual_head_inference.json')
     p.add_argument('--prepared-dir', type=Path, default=PROJECT / 'output_15_litept_v2_no_rectangles_pointcloud/work')
-    p.add_argument('--output-dir', type=Path, default=PROJECT / 'output_16_dual_head_satv2_pointcloud')
+    p.add_argument('--output-dir', type=Path, default=PROJECT / 'output_17_dual_head_support_fusion')
     p.add_argument('--stage', choices=('predict', 'export', 'all'), default='all')
+    p.add_argument('--raw-predictions', type=Path,
+                   help='Reuse an existing prediction NPZ; requires --stage export')
     p.add_argument('--device', default='cuda:0')
     args = p.parse_args()
+    if args.raw_predictions is not None and args.stage != 'export':
+        p.error('--raw-predictions requires --stage export')
     torch.set_num_threads(4)
     output = args.output_dir.resolve()
     work = output / 'work'
@@ -258,7 +262,7 @@ def main():
     if hashlib.sha256(args.checkpoint.read_bytes()).hexdigest() != selection['checkpoint_sha256']:
         raise ValueError('Checkpoint differs from the validation-frozen selection')
     checkpoint = torch.load(args.checkpoint, map_location='cpu', weights_only=False)
-    raw_path = work / 'dual_predictions.npz'
+    raw_path = args.raw_predictions.resolve() if args.raw_predictions else work / 'dual_predictions.npz'
     if args.stage in ('predict', 'all'):
         if raw_path.exists():
             raise FileExistsError(raw_path)
@@ -270,12 +274,15 @@ def main():
         raw['checkpoint_sha256'] = np.asarray(selection['checkpoint_sha256'])
         np.savez_compressed(raw_path, **raw)
     if args.stage in ('export', 'all'):
+        export_start = time.monotonic()
         if (output / 'inference_report.json').exists():
             raise FileExistsError('Completed outputs already exist')
         with np.load(raw_path) as f:
             raw = {k: f[k] for k in f.files}
         if str(raw['checkpoint_sha256']) != selection['checkpoint_sha256']:
             raise ValueError('Raw predictions use a different checkpoint')
+        if len(raw['tree_probability']) != len(arrays['coord']):
+            raise ValueError('Raw predictions and prepared point cloud have different sizes')
         new_ids, confidence, new_instances = merge_masks(arrays, raw, selection['config'])
         # Apply the same core-tile ownership contract as the GIS outputs.
         core_instances = [p for p in new_instances if any(
@@ -297,6 +304,9 @@ def main():
             writer.writerows(mapping)
         clouds = export_laz(output, arrays, metadata, new_ids, old_ids, confidence, (raw['point_probability'] >= .3).astype(np.uint8))
         report = dict(checkpoint=str(args.checkpoint.resolve()), checkpoint_sha256=selection['checkpoint_sha256'],
+                      selection=str(args.selection.resolve()), raw_predictions=str(raw_path.resolve()),
+                      reused_raw_predictions=args.raw_predictions is not None,
+                      export_seconds=time.monotonic()-export_start,
                       mask_config=selection['config'], inference_seconds=float(raw['seconds']), windows=int(raw['windows']),
                       legacy_trees=len(old_instances), mask_trees=len(new_instances),
                       legacy_vectors=legacy_report, point_vectors=point_report, clouds=clouds,
@@ -306,7 +316,8 @@ def main():
         (output / 'README.md').write_text(
             '# Two-head LitePT / SATv2-inspired point masks\n\n'
             'Open `PointClouds/trees_*.laz` in CloudCompare and accept the proposed Global Shift. '
-            'Display RGB for per-tree colours or select the `tree_id` scalar field. '
+            'Choose Properties > Colors > RGB for per-tree colours. If displaying `tree_id` as a scalar field, '
+            'restore its complete DISPLAYED range on each cloud; saturation alone does not restore hidden points. '
             '`tree_id = 0` means no assigned tree. Coordinates are original elevations, not normalized heights; '
             '`height_agl` provides the separate normalized height.\n\n'
             '- `tree_id`: new mask-decoder instance ID, globally unique across tiles.\n'
@@ -316,6 +327,9 @@ def main():
             '`Segmentation3` contains the legacy crowns/treetops. `PointHead/Segmentation3` contains '
             'filled polygons and treetops derived from the new point masks; their `treeID` matches LAZ `tree_id`. '
             'Both use EPSG:2180. The two branches are independent predictions and need not agree.\n\n'
+            f'Mask postprocessing: `{selection["config"].get("merge_strategy", "legacy")}`. '
+            'Support fusion, when selected, matches overlapping proposals to fixed tree anchors, '
+            'recovers nearby unassigned points and rebuilds polygons from the final support.\n\n'
             'This is a compact adaptation of https://arxiv.org/abs/2606.08206 with LitePT-S, '
             '96 ISA queries and 3 masked cross-attention layers. It is not a reproduction of the paper\'s metrics. '
             'See `inference_report.json` and the training run\'s `point_comparison.json`/`experiments.xlsx`.\n',

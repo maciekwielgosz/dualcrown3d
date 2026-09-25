@@ -8,6 +8,18 @@ Dane LAS/LAZ, rastry, GeoPackage, srodowiska Pythona, checkpointy oraz katalogi
 kontrolne wybranych wag zapisano w `CHECKSUMS.sha256`. Minimalna, lokalnie
 dostosowana czesc LitePT wraz z informacja o rewizji znajduje sie w `vendor/`.
 
+## Corrected point-mask merging
+
+The dual-head inference runner now uses `configs/dual_head_inference.json` and
+writes to `output_17_dual_head_support_fusion`. Overlapping masks can recover
+previously unassigned points when mask overlap, spatial proximity and predicted
+tree centres agree. Paired validation improved point PQ from 0.1437 to 0.1505
+and crown PQ from 0.1881 to 0.2029, with unchanged network weights.
+See [the correction report and reproduction commands](reports/support_fusion_fix.md).
+
+For CloudCompare open `PointClouds/trees_*.laz` and choose RGB colours. Restore
+the full displayed range when viewing the `tree_id` scalar field.
+
 ## Kampania v2 bez prostokątnych anotacji IDTREES
 
 Kolekcję IDTREES usunięto w całości z nowego zbioru

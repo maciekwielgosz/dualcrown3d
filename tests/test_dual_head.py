@@ -157,6 +157,83 @@ class DualTests(unittest.TestCase):
                 self.assertEqual(set(np.unique(restored.tree_id)), {0, 7})
                 self.assertTrue((np.asarray(restored.tree_id)[np.asarray(restored.classification) == 2] == 0).all())
 
+    def fusion_fixture(self, masks, quality=None):
+        xyz = np.array([[x*.5, y*.5, 5.] for x in range(12) for y in range(4)], np.float32)
+        arrays = dict(coord=xyz, source_origin=np.zeros(3), voxel_size=.25)
+        raw = dict(object_score=np.asarray(quality or [.95, .8, .7][:len(masks)]),
+                   candidate_offset=np.cumsum([0, *map(len, masks)]),
+                   point_index=np.concatenate(masks), point_score=np.full(sum(map(len, masks)), .9))
+        config = dict(object_threshold=.1, mask_threshold=.5, minimum_voxels=4, merge_overlap=.15,
+                      merge_strategy='support_fusion_v2', fusion_min_iou=.2,
+                      fusion_dominance=.8, fusion_max_distance_m=1.5)
+        return arrays, raw, config
+
+    def test_fusion_recovers_complementary_support_and_rebuilds_polygon(self):
+        arrays, raw, cfg = self.fusion_fixture([np.arange(12), np.arange(20)])
+        old_ids, _, old_instances = merge_masks(arrays, raw, {**cfg, 'merge_strategy': 'legacy'})
+        ids, confidence, instances = merge_masks(arrays, raw, cfg)
+        self.assertEqual(np.count_nonzero(old_ids), 12)
+        self.assertEqual(np.count_nonzero(ids), 20)
+        self.assertEqual(len(instances), 1)
+        np.testing.assert_array_equal(ids[:12], old_ids[:12])
+        self.assertGreater(instances[0]['geometry'].area, old_instances[0]['geometry'].area)
+        self.assertEqual(instances[0]['points'], 20)
+        np.testing.assert_allclose(confidence[12:20], .8*.9)
+
+    def test_fusion_does_not_grow_transitively(self):
+        arrays, raw, cfg = self.fusion_fixture([np.arange(12), np.arange(20), np.arange(8, 28)])
+        ids, _, instances = merge_masks(arrays, raw, cfg)
+        self.assertEqual(len(instances), 1)
+        self.assertTrue((ids[12:20] == 1).all())
+        self.assertTrue((ids[20:28] == 0).all())
+
+    def test_fusion_rejects_bridge_between_neighbouring_trees(self):
+        arrays, raw, cfg = self.fusion_fixture([np.arange(12), np.arange(28, 40), np.arange(40)])
+        ids, _, instances = merge_masks(arrays, raw, cfg)
+        self.assertEqual(len(instances), 2)
+        self.assertTrue((ids[:12] == 1).all())
+        self.assertTrue((ids[28:40] == 2).all())
+        self.assertTrue((ids[12:28] == 0).all())
+
+    def test_fusion_limits_distance_and_point_probability(self):
+        arrays, raw, cfg = self.fusion_fixture([np.arange(12), np.r_[np.arange(20), 47]])
+        raw['point_score'][12+12:12+16] = .55
+        ids, _, _ = merge_masks(arrays, raw, {**cfg, 'fusion_min_probability': .6})
+        self.assertTrue((ids[12:16] == 0).all())
+        self.assertTrue((ids[16:20] == 1).all())
+        self.assertEqual(ids[47], 0)
+
+    def test_fusion_competing_support_uses_confidence_without_relabelling_anchors(self):
+        arrays, raw, cfg = self.fusion_fixture([np.arange(12), np.arange(20, 32),
+                                               np.r_[np.arange(12), 16], np.r_[np.arange(20, 32), 16]],
+                                              [.99, .98, .8, .9])
+        ids, confidence, instances = merge_masks(arrays, raw, cfg)
+        self.assertEqual(len(instances), 2)
+        self.assertEqual(ids[16], 2)
+        self.assertAlmostEqual(float(confidence[16]), .9*.9, places=6)
+        self.assertTrue((ids[:12] == 1).all())
+        self.assertTrue((ids[20:32] == 2).all())
+
+    def test_fusion_can_fill_interior_without_expanding_crown_boundary(self):
+        boundary = np.setdiff1d(np.arange(16), [5, 6, 9, 10])
+        arrays, raw, cfg = self.fusion_fixture([boundary, np.arange(20)])
+        _, _, old = merge_masks(arrays, raw, {**cfg, 'merge_strategy': 'legacy'})
+        ids, _, instances = merge_masks(arrays, raw, {**cfg, 'fusion_inside_hull': True})
+        self.assertTrue((ids[:16] == 1).all())
+        self.assertTrue((ids[16:20] == 0).all())
+        self.assertTrue(instances[0]['geometry'].equals(old[0]['geometry']))
+
+    def test_fusion_vote_agreement_rejects_other_tree_center(self):
+        arrays, raw, cfg = self.fusion_fixture([np.arange(12), np.arange(20)])
+        raw['shifted_center'] = np.zeros_like(arrays['coord'])
+        raw['shifted_center'][16:20, 0] = 10.
+        ids, _, _ = merge_masks(arrays, raw, {**cfg, 'fusion_max_vote_distance_m': 1.})
+        self.assertTrue((ids[12:16] == 1).all())
+        self.assertTrue((ids[16:20] == 0).all())
+        del raw['shifted_center']
+        with self.assertRaisesRegex(ValueError, 'shifted_center'):
+            merge_masks(arrays, raw, {**cfg, 'fusion_max_vote_distance_m': 1.})
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -1,0 +1,23 @@
+{
+  "epoch": 4,
+  "checkpoint_sha256": "5c253e8bbf8dd77ef8acf603695a08df565b26424447536fc808a8745db140a5",
+  "config": {
+    "object_threshold": 0.1,
+    "mask_threshold": 0.5,
+    "minimum_voxels": 12,
+    "merge_overlap": 0.15,
+    "owner_only": true,
+    "merge_strategy": "support_fusion_v2",
+    "fusion_min_iou": 0.3,
+    "fusion_dominance": 0.8,
+    "fusion_max_distance_m": 1.5,
+    "fusion_min_probability": 0.5,
+    "fusion_inside_hull": false,
+    "fusion_max_vote_distance_m": 2.0
+  },
+  "validation_reference": "outputs/dual_head_support_fusion_v2/vote/selected.json",
+  "validation_plots": 18,
+  "manifest_sha256": "5cd5e9a0e045f78d05fd2313732b06078a34ffb1fa480c5813327a2a66913581",
+  "acceptance_passed": true,
+  "note": "Postprocessing correction with fixed epoch-4 weights; selected on validation only. Historical configurations without merge_strategy retain legacy suppression."
+}

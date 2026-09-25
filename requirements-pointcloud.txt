@@ -4,6 +4,7 @@ geopandas==1.1.4
 laspy==2.7.0
 lazrs==0.8.2
 numpy==2.5.2
+openpyxl==3.1.5
 pandas==3.0.6
 pyogrio==0.13.0
 pyproj==3.8.0

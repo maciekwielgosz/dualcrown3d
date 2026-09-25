@@ -12,7 +12,7 @@ PROJECT = Path(__file__).resolve().parents[1]
 
 def main():
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument('--output-dir', type=Path, default=PROJECT / 'output_16_dual_head_satv2_pointcloud')
+    p.add_argument('--output-dir', type=Path, default=PROJECT / 'output_17_dual_head_support_fusion')
     p.add_argument('--preparation', type=Path, default=PROJECT / 'output_15_litept_v2_no_rectangles_pointcloud/work/preparation.json')
     args = p.parse_args()
     output = args.output_dir
