@@ -1,0 +1,6 @@
+path: /home/maciej.wielgosz/Projects/segm/DL_model_version/dataset_chm_only_ideas_combined
+train: images/train
+val: images/val
+test: images/test
+names:
+  0: tree

@@ -1,0 +1,75 @@
+{
+  "version": 3,
+  "evaluation_protocol": "full_crowns_v3_class3_ignore_grid2",
+  "dataset": "combined_als_crowns_v1/manifest.csv",
+  "selection_metric": "validation source-balanced full-crown PQ@0.50",
+  "secondary_guard": "pooled validation F1@0.50 above the selected classical configuration",
+  "test_policy": "Freeze one selected model and inference config before final comparison; never select by test",
+  "external_initialization": "NuScenes LitePT-S, not old forestry checkpoints",
+  "experiments": [
+    {
+      "id": "litept_masked_v1",
+      "architecture": "LitePT-S + 3-layer masked query decoder + auxiliary masks + foreground head + learned spatial prior",
+      "queries": 64,
+      "epochs": 100,
+      "points_per_crop_max": 40000,
+      "density_keep": [0.5, 0.75, 1.0],
+      "sampling": "equal datasets, equal collections within dataset",
+      "numeric": "FP32 forward/loss, gradient scaling and clipping"
+    },
+    {
+      "id": "pointmlp_masked_v1",
+      "architecture": "Point MLP + 3-layer masked query decoder + auxiliary masks + foreground head + spatial prior; speed-oriented ablation",
+      "epochs": 40,
+      "points_per_crop_max": 30000,
+      "density_keep": [0.5, 0.75, 1.0]
+    },
+    {
+      "id": "litept_offset_v1",
+      "architecture": "LitePT-S + semantic and 3D center-offset heads; XY vote clustering and filled crown hulls",
+      "epochs": 80,
+      "points_per_crop_max": 40000,
+      "density_keep": [0.5, 0.75, 1.0]
+    },
+    {
+      "id": "pointmlp_peaks_v2",
+      "architecture": "PointMLP masked decoder; 48 queries seeded by height peaks, auxiliary masks and semantic head",
+      "epochs": 40,
+      "points_per_crop_max": 30000,
+      "initialization": "random",
+      "density_keep": [0.5, 0.75, 1.0]
+    },
+    {
+      "id": "litept_offset_xy_v2",
+      "architecture": "LitePT-S semantic and offset heads; XY-only regression and cosine losses",
+      "epochs": 30,
+      "points_per_crop_max": 40000,
+      "initialization": "litept_offset_v1 epoch 10; snapshot and checksum recorded",
+      "backbone_lr": 0.00003,
+      "head_lr": 0.0003,
+      "density_keep": [0.5, 0.75, 1.0]
+    },
+    {
+      "id": "litept_offset_average_v1",
+      "architecture": "Equal-weight parameter average of semantic/offset LitePT-S epochs 10 and 35",
+      "epochs": 0,
+      "initialization": "two training-only checkpoint sources documented in averaging.json"
+    },
+    {
+      "id": "litept_offset_crownscale_v3",
+      "architecture": "Averaged LitePT-S semantic/offset model with whole-crown-scale clustering",
+      "epochs": 0,
+      "initialization": "litept_offset_average_v1",
+      "validation_search": "24 fixed global profiles: probability x smoothing/separation/assignment radius; no test tuning",
+      "calibration_script": "scripts/calibrate_combined_crown_scale.py"
+    }
+  ],
+  "notes": [
+    "The lightweight decoder is Mask3D-inspired, not an exact official Mask3D implementation.",
+    "Full-polygon scores must not be confused with matched crop point-mask IoU.",
+    "Dataset test is historically exposed, not a pristine external publication test.",
+    "No success claim based only on exceeding a historical score on different data.",
+    "Training max epochs above are budgets, not necessarily completed epochs; early stopping and exact epochs are logged.",
+    "Final evaluation uses unique repaired sparse grids and explicit class-3 unannotated canopy ignore; early training validation scores are provisional."
+  ]
+}

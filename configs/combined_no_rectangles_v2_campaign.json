@@ -1,0 +1,38 @@
+{
+  "version": 2,
+  "dataset": "combined_als_crowns_no_rectangles_v2/manifest.csv",
+  "excluded_collection": "IDTREES",
+  "reason": "All retained IDTREES crown annotations are source bounding rectangles, not detailed crown masks.",
+  "split": {
+    "train": 100,
+    "val": 18,
+    "test": 29,
+    "policy": "Preserve v1 spatial groups and assignments; never move exposed test plots into training."
+  },
+  "selection_metric": "validation source-balanced full-crown PQ@0.50",
+  "secondary_guard": "pooled validation F1@0.50 above the best recalculated classical configuration",
+  "test_policy": "Freeze one validation-selected model and inference configuration before a single test evaluation.",
+  "experiment": {
+    "id": "litept_offset_v2",
+    "architecture": "LitePT-S backbone + semantic and 3-D center-offset heads + XY vote clustering + filled crown hulls",
+    "initialization": "NuScenes LitePT-S; no forestry checkpoint from v1",
+    "epochs_budget": 80,
+    "early_stopping_patience": 25,
+    "crop_size_m": 20,
+    "max_points": 40000,
+    "samples_per_epoch": 160,
+    "density_keep": [0.5, 0.75, 1.0],
+    "backbone_lr": 0.0001,
+    "head_lr": 0.001,
+    "weight_decay": 0.02,
+    "numeric": "FP32 forward and loss on GPU",
+    "validation_interval_epochs": 5
+  },
+  "evaluation_protocol": "full_crowns_v3_class3_ignore_grid2",
+  "notes": [
+    "Test is historically exposed and is not used to tune this retraining run.",
+    "ECODSE released crown polygons remain; they are not axis-aligned box annotations.",
+    "Native point-derived crowns are retained even when coarse projection happens to produce an approximately rectangular small polygon.",
+    "Historical v1 results remain immutable for audit and are not overwritten."
+  ]
+}

@@ -1,0 +1,60 @@
+# Python environments, caches and local application state
+.venv/
+.venv-gpu/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.matplotlib/
+.ultralytics/
+
+# Trained weights and exported model binaries
+models/
+*.pt
+*.pth
+*.ckpt
+*.onnx
+*.engine
+
+# Generated datasets, caches and intermediate artifacts
+artifacts/
+outputs/
+output_*/
+pointcloud_dataset_0p25m/
+dataset/images/
+dataset/labels/
+dataset_chm_only/images/
+dataset_chm_only/labels/
+dataset_chm_only_ideas_combined/images/
+dataset_chm_only_ideas_combined/labels/
+dataset_paper_fusion/images/
+dataset_paper_fusion/labels/
+
+# Reused geospatial products; provenance notes and source scripts stay tracked
+reused/for_instance_chm_gt_0p5m/
+reused/watershed_lmf_for_instance_v2/
+
+# Large geospatial and numerical products
+*.las
+*.laz
+*.tif
+*.tiff
+*.vrt
+*.gpkg
+*.npz
+*.npy
+*.xlsx
+
+# Local reports and temporary files
+reports/*.tmp
+*.log
+
+# Embedded upstream repositories and unused research checkout
+vendor/LitePT/.git/
+vendor/ForAINet/
+
+# Native extension build products
+vendor/**/build/
+vendor/**/*.so
+vendor/**/*.o

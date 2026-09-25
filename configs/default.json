@@ -1,0 +1,24 @@
+{
+  "seed": 20260923,
+  "pixel_size_m": 0.5,
+  "minimum_canopy_height_m": 2.0,
+  "chm_clip_max_m": 45.0,
+  "density_percentile": 99.5,
+  "intensity_low_percentile": 1.0,
+  "intensity_high_percentile": 99.0,
+  "validation_dataset_ids": [
+    "CULS_plot_1_annotated",
+    "NIBIO_plot_6_annotated",
+    "NIBIO_plot_13_annotated",
+    "NIBIO_plot_19_annotated",
+    "SCION_plot_39_annotated"
+  ],
+  "training": {
+    "model": "yolo11s-seg.pt",
+    "epochs": 300,
+    "image_size": 320,
+    "batch": 8,
+    "patience": 50,
+    "workers": 4
+  }
+}

@@ -1,0 +1,9 @@
+numpy==2.5.3
+scipy==1.18.0
+pillow==12.3.0
+laspy==2.7.0
+rasterio==1.5.1
+geopandas==1.1.4
+shapely==2.1.2
+matplotlib==3.11.1
+pyogrio==0.13.0
