@@ -102,6 +102,12 @@ class DualTests(unittest.TestCase):
         result = predict(Stub(), arrays, max_points=1)
         np.testing.assert_array_equal(result['shifted_center'], xyz)
         np.testing.assert_array_equal(result['tree_probability'], np.full(4, .5))
+        # A nearly stride-aligned float64 endpoint can lie below float32 xmax.
+        xyz = np.array([[.18, .08, 1.], [80.18, 32.42, .84], [80.18, 17.88, .87],
+                        [40., 80.05, 4.]], np.float32)
+        arrays = dict(coord=xyz, intensity=np.ones(4, np.float32), grid_coord=np.floor(xyz/.25).astype(np.int32))
+        result = predict(Stub(), arrays, max_points=1)
+        np.testing.assert_array_equal(result['shifted_center'], xyz)
 
     def test_point_matching_id_invariant(self):
         gt = np.array([0, 1, 1, 2, 2])

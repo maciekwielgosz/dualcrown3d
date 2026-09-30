@@ -31,6 +31,7 @@ def predict(model, arrays, max_points=40000, owner_only=True):
     size, overlap = 20., 8.
     xs = starts_for_axis(float(xyz[:, 0].min()), float(xyz[:, 0].max()), size, overlap)
     ys = starts_for_axis(float(xyz[:, 1].min()), float(xyz[:, 1].max()), size, overlap)
+    maximum_x, maximum_y = float(xyz[:, 0].max()), float(xyz[:, 1].max())
     # Half-open ownership at the upper edge must survive float32 conversion.
     xo = ownership_intervals(xs, size, float(xyz[:, 0].min()), float(np.nextafter(xyz[:, 0].max(), np.float32(np.inf))))
     yo = ownership_intervals(ys, size, float(xyz[:, 1].min()), float(np.nextafter(xyz[:, 1].max(), np.float32(np.inf))))
@@ -50,8 +51,13 @@ def predict(model, arrays, max_points=40000, owner_only=True):
                 context = np.asarray(sorted(index.query_ball_point([x+10., y+10.], 10.0001, p=np.inf)), dtype=np.int64)
                 if not len(context):
                     continue
-                context = context[(xyz[context, 0] >= x) & (xyz[context, 0] <= x+size)
-                                  & (xyz[context, 1] >= y) & (xyz[context, 1] <= y+size)]
+                # starts_for_axis merges endpoints closer than 1e-6. With
+                # float32 coordinates, the retained float64 end may be a few
+                # ULPs below the last point. Include the exact observed maximum.
+                x_end = maximum_x if xi == len(xs)-1 else x+size
+                y_end = maximum_y if yi == len(ys)-1 else y+size
+                context = context[(xyz[context, 0] >= x) & (xyz[context, 0] <= x_end)
+                                  & (xyz[context, 1] >= y) & (xyz[context, 1] <= y_end)]
                 a, b = xo[xi]
                 c, d = yo[yi]
                 owner = context[(xyz[context, 0] >= a) & (xyz[context, 0] < b)
@@ -240,7 +246,7 @@ def export_laz(output, arrays, metadata, new_ids, old_ids, confidence, semantic,
                 raise AssertionError('Unexpected LAZ CRS')
             reports.append(dict(file=str(path), points=len(part.points), labelled_points=int((part.tree_id > 0).sum()),
                                 trees=len(np.unique(part.tree_id[part.tree_id > 0])), exact_voxel_mapping=True,
-                                assignment_source={str(k): int((part.assignment_source == k).sum()) for k in range(6)},
+                                assignment_source={str(k): int((part.assignment_source == k).sum()) for k in range(8)},
                                 unassigned_predicted_tree_points=int((part.segmentation_status == 2).sum())))
             print(f'LAZ: {path.name}: {len(part.points):,} original points', flush=True)
     return reports
@@ -278,8 +284,12 @@ def main():
             raise FileExistsError(raw_path)
         if not torch.cuda.is_available() and args.device.startswith('cuda'):
             raise RuntimeError('CUDA required')
-        model = DualHeadLitePT().to(args.device)
+        model = DualHeadLitePT(**checkpoint.get('model_args', {})).to(args.device)
         model.load_state_dict(checkpoint['model'], strict=True)
+        if checkpoint.get('config', {}).get('serialization') == 'fixed at every pooling stage':
+            for module in model.modules():
+                if hasattr(module, 'shuffle_orders'):
+                    module.shuffle_orders = False
         raw = predict(model, arrays, owner_only=selection['config'].get('owner_only', True))
         raw['checkpoint_sha256'] = np.asarray(selection['checkpoint_sha256'])
         np.savez_compressed(raw_path, **raw)
@@ -339,7 +349,8 @@ def main():
             'not comparable accuracy estimates.\n'
             '- `pred_semantic`: 0 = background, 1 = tree; source `classification` is preserved.\n\n'
             '- `assignment_source`: 0 = unassigned, 1 = mask/support-fusion anchor, 2 = cross-head completion, '
-            '3 = vote-head instance (anchor or added), 4 = local centre-consistent recovery, 5 = added mask-head instance.\n'
+            '3 = vote-head instance (anchor or added), 4 = local centre-consistent recovery, '
+            '5 = added mask-head instance, 6 = mask-guided split, 7 = mask-guided merge.\n'
             '- `segmentation_status`: 0 = predicted background/ground, 1 = assigned instance, 2 = predicted tree without an instance. '
             'This is a model diagnostic, not ground truth.\n\n'
             '`Segmentation3` contains the legacy crowns/treetops. `PointHead/Segmentation3` contains '
@@ -350,8 +361,9 @@ def main():
             'recovers nearby unassigned points and rebuilds polygons from the final support. '
             'Dual consensus also matches centre-vote instances, can recover missing trees, and optionally performs '
             'one-pass spatial/centre-consistent completion. It does not force every point into a tree.\n\n'
-            'This is a compact adaptation of https://arxiv.org/abs/2606.08206 with LitePT-S, '
-            '96 ISA queries and 3 masked cross-attention layers. It is not a reproduction of the paper\'s metrics. '
+            'This is a compact adaptation of https://arxiv.org/abs/2606.08206 with LitePT-S. '
+            f'Decoder configuration: {json.dumps(checkpoint.get("model_args", {}))}. '
+            'It is not a reproduction of the paper\'s metrics. '
             'See `inference_report.json` and the training run\'s `point_comparison.json`/`experiments.xlsx`.\n',
             encoding='utf-8')
         print(json.dumps(report, indent=2), flush=True)

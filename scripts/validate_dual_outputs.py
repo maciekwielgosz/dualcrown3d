@@ -71,7 +71,7 @@ def main():
             if 'assignment_source' in set(cloud.point_format.dimension_names):
                 provenance = np.asarray(cloud.assignment_source)
                 status = np.asarray(cloud.segmentation_status)
-                assert set(np.unique(provenance)) <= {0, 1, 2, 3, 4, 5}
+                assert set(np.unique(provenance)) <= {0, 1, 2, 3, 4, 5, 6, 7}
                 assert np.array_equal(provenance > 0, ids > 0)
                 assert np.array_equal(status == 1, ids > 0)
                 assert np.array_equal(status == 2, (ids == 0) & (np.asarray(cloud.pred_semantic) == 1))

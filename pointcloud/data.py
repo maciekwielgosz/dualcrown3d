@@ -24,7 +24,7 @@ def read_manifest(
 
 def load_npz(path: str | Path) -> dict[str, np.ndarray]:
     with np.load(path) as data:
-        return {
+        result = {
             "coord": data["coord"].astype(np.float32),
             "grid_coord": data["grid_coord"].astype(np.int32),
             "intensity": data["intensity"].astype(np.float32),
@@ -33,6 +33,9 @@ def load_npz(path: str | Path) -> dict[str, np.ndarray]:
             "source_origin": data["source_origin"].astype(np.float64),
             "voxel_size": np.asarray(data["voxel_size"]).astype(np.float32),
         }
+        if "semantic_target" in data:
+            result["semantic_target"] = data["semantic_target"].astype(np.int64)
+        return result
 
 
 def unique_voxels(coord: np.ndarray, voxel_size: float) -> np.ndarray:
@@ -53,11 +56,13 @@ def prepare_crop(
     augment: bool,
     density_keep_fractions: tuple[float, ...] | None = None,
     preserve_height: bool = False,
+    anchor_index: int | None = None,
 ) -> dict[str, torch.Tensor]:
     coord = arrays["coord"]
     tree_id = arrays["tree_id"]
     positive = np.flatnonzero(tree_id > 0)
-    anchor_index = int(rng.choice(positive if len(positive) else len(coord)))
+    if anchor_index is None:
+        anchor_index = int(rng.choice(positive if len(positive) else len(coord)))
     anchor = coord[anchor_index, :2]
     half = crop_size_m / 2.0
     inside = (
@@ -72,6 +77,8 @@ def prepare_crop(
     coord = coord[selected].copy()
     intensity = arrays["intensity"][selected].copy()
     tree_id = tree_id[selected].copy()
+    semantic_target = arrays.get("semantic_target", np.where(arrays["tree_id"] < 0, -1,
+                                  (arrays["tree_id"] > 0).astype(np.int64)))[selected].copy()
     instance_offset = arrays["instance_offset"][selected].copy()
 
     if augment and density_keep_fractions:
@@ -82,6 +89,7 @@ def prepare_crop(
             retained_density = np.sort(
                 rng.choice(len(coord), size=keep_count, replace=False)
             )
+            semantic_target = semantic_target[retained_density]
             coord, intensity, tree_id, instance_offset = (
                 coord[retained_density],
                 intensity[retained_density],
@@ -102,6 +110,7 @@ def prepare_crop(
         instance_offset = instance_offset @ rotation.T * scale
         if rng.random() < 0.3:
             drop = rng.random(len(coord)) >= rng.uniform(0.0, 0.15)
+            semantic_target = semantic_target[drop]
             coord, intensity, tree_id, instance_offset = (
                 coord[drop],
                 intensity[drop],
@@ -116,6 +125,7 @@ def prepare_crop(
 
     voxel_size = float(arrays["voxel_size"])
     retained = unique_voxels(coord, voxel_size)
+    semantic_target = semantic_target[retained]
     coord, intensity, tree_id, instance_offset = (
         coord[retained],
         intensity[retained],
@@ -131,6 +141,7 @@ def prepare_crop(
     # integer grid rather than relying on the pre-centering grid alone.
     _, final_index = np.unique(grid_coord, axis=0, return_index=True)
     final_index.sort()
+    semantic_target = semantic_target[final_index]
     coord, intensity, tree_id, instance_offset, grid_coord = (
         coord[final_index],
         intensity[final_index],
@@ -149,6 +160,7 @@ def prepare_crop(
         "semantic": torch.from_numpy(semantic),
         "instance_offset": torch.from_numpy(instance_offset),
         "tree_id": torch.from_numpy(tree_id),
+        "semantic_target": torch.from_numpy(semantic_target.astype(np.int64)),
     }
 
 

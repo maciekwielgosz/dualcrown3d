@@ -30,7 +30,8 @@ def main():
     edges = [np.arange(0, length+2, 2) for length in extent]
     counts, _, _ = np.histogram2d(*xy.T, bins=edges)
     fig, axes = plt.subplots(1, 2, figsize=(12, 5.6), layout='constrained', sharex=True, sharey=True)
-    for ax, cloud, title in zip(axes, clouds, ['Before: output_17', 'After: dual-head consensus']):
+    names = ['_'.join(folder.name.split('_')[:2]) for folder in (args.before, args.after)]
+    for ax, cloud, title in zip(axes, clouds, [f'Before: {names[0]}', f'After: {names[1]}']):
         unassigned = np.asarray(cloud.tree_id)[canopy] == 0
         missing, _, _ = np.histogram2d(*xy[unassigned].T, bins=edges)
         fraction = np.divide(missing, counts, out=np.full_like(counts, np.nan), where=counts>0)

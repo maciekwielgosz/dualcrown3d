@@ -78,7 +78,7 @@ def merge_masks(arrays, raw, config):
     Anchor labels never change; recovered points never create transitive links.
     """
     strategy = config.get('merge_strategy', 'legacy')
-    if strategy == 'dual_consensus_v3':
+    if strategy in ('dual_consensus_v3', 'adaptive_consensus_v4'):
         return merge_masks_with_sources(arrays, raw, config)[:3]
     if strategy not in ('legacy', 'support_fusion_v2'):
         raise ValueError(f'Unknown merge strategy: {strategy}')
@@ -167,6 +167,11 @@ def merge_masks(arrays, raw, config):
 
 def merge_masks_with_sources(arrays, raw, config):
     """Public merger plus assignment provenance; historical API stays intact."""
+    if config.get('merge_strategy') == 'adaptive_consensus_v4':
+        from pointcloud.adaptive_fusion import adaptive_consensus
+        base_config = {**config, 'merge_strategy': 'support_fusion_v2'}
+        labels, confidence, _ = merge_masks(arrays, raw, base_config)
+        return adaptive_consensus(arrays, raw, labels, confidence, config)
     if config.get('merge_strategy') == 'dual_consensus_v3':
         from pointcloud.dual_fusion import fuse_heads
         base_config = {**config, 'merge_strategy': 'support_fusion_v2'}

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Audit a postprocessing-only re-export against the previous labelled LAZ files."""
+"""Compare labelled point coverage across two inference exports."""
 import argparse
 import csv
 import json
@@ -16,6 +16,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--before', type=Path, default=PROJECT / 'output_17_dual_head_support_fusion')
     parser.add_argument('--after', type=Path, default=PROJECT / 'output_19_dual_head_complete_consensus')
+    parser.add_argument('--allow-legacy-label-changes', action='store_true',
+                        help='Allow legacy branch labels to differ when checkpoints differ')
     args = parser.parse_args()
     rows = []
     before_paths = sorted((args.before / 'PointClouds').glob('trees_*.laz'))
@@ -24,16 +26,19 @@ def main():
         raise ValueError('Mismatched or missing point-cloud tiles')
     for path in before_paths:
         before, after = laspy.read(path), laspy.read(args.after / 'PointClouds' / path.name)
-        for field in ('X', 'Y', 'Z', 'classification', 'intensity', 'height_agl', 'legacy_tree_id'):
+        for field in ('X', 'Y', 'Z', 'classification', 'intensity', 'height_agl'):
             if not np.array_equal(np.asarray(before[field]), np.asarray(after[field])):
                 raise AssertionError(f'Changed {field}: {path.name}')
+        legacy_unchanged = np.array_equal(np.asarray(before.legacy_tree_id), np.asarray(after.legacy_tree_id))
+        if not args.allow_legacy_label_changes and not legacy_unchanged:
+            raise AssertionError(f'Changed legacy_tree_id: {path.name}')
         canopy = (np.asarray(after.height_agl) >= 2) & (np.asarray(after.classification) != 2)
         old, new = np.asarray(before.tree_id) > 0, np.asarray(after.tree_id) > 0
         rows.append(dict(tile=path.stem.removeprefix('trees_'), points=len(new), canopy_points=int(canopy.sum()),
                          old_labelled_canopy=int((old & canopy).sum()), new_labelled_canopy=int((new & canopy).sum()),
                          old_coverage=float(old[canopy].mean()), new_coverage=float(new[canopy].mean()),
                          recovered_points=int((~old & new).sum()), lost_labels=int((old & ~new).sum()),
-                         source_fields_and_legacy_labels_unchanged=True))
+                         source_fields_unchanged=True, legacy_labels_unchanged=bool(legacy_unchanged)))
     report = dict(before=str(args.before.resolve()), after=str(args.after.resolve()), per_tile=rows,
                   total_recovered_points=sum(r['recovered_points'] for r in rows),
                   total_lost_labels=sum(r['lost_labels'] for r in rows),

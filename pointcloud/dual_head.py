@@ -155,13 +155,22 @@ class TreeMaskDecoder(DensePointDecoder):
 
 
 class DualHeadLitePT(nn.Module):
-    def __init__(self, patch_size=256, hidden_dim=128, legacy=None):
+    def __init__(self, patch_size=256, hidden_dim=128, legacy=None,
+                 queries=96, decoder_layers=3, memory_tokens=1024, decoder_policy='legacy'):
         super().__init__()
         if legacy is None:
             from pointcloud.model import LitePTTreeInstance
             legacy = LitePTTreeInstance(patch_size=patch_size)
         self.legacy = legacy
-        self.point_decoder = TreeMaskDecoder(hidden_dim=hidden_dim)
+        decoder_class = TreeMaskDecoder
+        if decoder_policy == 'hybrid_v4':
+            from pointcloud.decoder_v4 import HybridTreeMaskDecoder
+            decoder_class = HybridTreeMaskDecoder
+        elif decoder_policy != 'legacy':
+            raise ValueError(decoder_policy)
+        self.point_decoder = decoder_class(hidden_dim=hidden_dim, queries=queries,
+                                             layers=decoder_layers, memory_tokens=memory_tokens)
+        self.training_scope = 'mask'
         self.legacy.requires_grad_(False)
         self.legacy.eval()
         self.legacy.backbone.shuffle_orders = False
@@ -172,18 +181,36 @@ class DualHeadLitePT(nn.Module):
 
     def train(self, mode=True):
         super().train(mode)
+        # Keep BN statistics and stochastic backbone layers fixed on small crops.
+        # eval() does not disable gradients through explicitly unfrozen weights.
         self.legacy.eval()
         self.legacy.backbone.shuffle_orders = False
         return self
 
+    def configure_training(self, scope='mask'):
+        if scope not in ('mask', 'heads', 'partial'):
+            raise ValueError(f'Unknown training scope: {scope}')
+        self.training_scope = scope
+        self.legacy.requires_grad_(False)
+        self.point_decoder.requires_grad_(True)
+        if scope != 'mask':
+            self.legacy.semantic_head.requires_grad_(True)
+            self.legacy.offset_head.requires_grad_(True)
+        if scope == 'partial':
+            # Deepest attention stage plus feature upsampling; early encoder fixed.
+            self.backbone.enc.enc4.requires_grad_(True)
+            self.backbone.dec.requires_grad_(True)
+        self.train(self.training)
+
     def forward(self, data):
         if len(data['offset']) != 1:
             raise ValueError('One spatial crop per forward is required')
-        with torch.no_grad():
+        joint = self.training_scope != 'mask'
+        with torch.set_grad_enabled(torch.is_grad_enabled() and joint):
             features = self.legacy.backbone(data).feat
             logits = self.legacy.semantic_head(features)
             offset = self.legacy.offset_head(features) * self.legacy.offset_scale_m
-        dense = self.point_decoder(features.detach(), data, logits.detach(), offset.detach())
+        dense = self.point_decoder(features, data, logits, offset)
         return dict(semantic_logits=logits, offset_m=offset,
                     point_semantic_logits=dense['semantic_logits'],
                     point_offset_m=dense['offset_m'], point_quality_logits=dense['quality_logits'],
@@ -241,6 +268,9 @@ def discriminative_loss(embedding, ids):
 
 
 def seed_mask_losses(output, ids):
+    if output.get('mask_supervision') == 'hungarian_v4':
+        from pointcloud.decoder_v4 import set_mask_losses
+        return set_mask_losses(output, ids)
     zero = output['embedding'].sum() * 0.
     if not len(output['seed_index']):
         return {'mask_loss': zero, 'embedding_loss': discriminative_loss(output['embedding'], ids), 'mask_iou': zero}
@@ -280,12 +310,15 @@ def dense_losses(prediction, batch):
     ids = batch['tree_id']
     valid = ids >= 0
     positive = ids > 0
+    semantic_target = batch.get('semantic_target', torch.where(ids < 0, -1, positive.long()))
+    semantic_valid = semantic_target >= 0
     zero = logits.sum() * 0.
-    semantic = F.cross_entropy(logits[valid], positive[valid].long(),
-                               weight=logits.new_tensor([1., 1.2])) if valid.any() else zero
+    semantic = F.cross_entropy(logits[semantic_valid], semantic_target[semantic_valid].long(),
+                               weight=logits.new_tensor([1., 1.2])) if semantic_valid.any() else zero
     probability = logits.softmax(1)[:, 1]
-    dice = 1. - (2 * probability[positive].sum() + 1.) / (
-        probability[valid].sum() + positive.sum() + 1.)
+    semantic_positive = semantic_target > 0
+    dice = 1. - (2 * probability[semantic_positive].sum() + 1.) / (
+        probability[semantic_valid].sum() + semantic_positive.sum() + 1.)
     regression = compact = separation = quality = zero
     if positive.any():
         unique, inverse, counts = torch.unique(ids[positive], return_inverse=True, return_counts=True)
