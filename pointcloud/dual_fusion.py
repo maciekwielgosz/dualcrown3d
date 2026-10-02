@@ -72,10 +72,10 @@ def vote_instances(arrays, raw, config):
     temporary[selected[finite]] = nearest[finite]+1
     identifier = 0
     for members in groups(temporary):
-        if len(members) < config['min_voxels'] or xyz[members, 2].max() < 2.:
+        if len(members) < config['min_voxels'] or xyz[members, 2].max() < config.get('min_height_m', 2.):
             continue
         geometry = MultiPoint(xyz[members, :2]).convex_hull.buffer(float(arrays['voxel_size'])/2.)
-        if geometry.area < .75:
+        if geometry.area < config.get('min_area_m2', .75):
             continue
         identifier += 1
         labels[members] = identifier
@@ -177,7 +177,9 @@ def _fuse(arrays, raw, anchor_labels, anchor_confidence, config, auxiliary, anch
                 and center_index.query(center)[0] < cfg.get('dual_new_separation_m', 1.)):
             continue
         support = xyz[remaining]
-        if support[:, 2].max() < 2. or MultiPoint(support[:, :2]).convex_hull.buffer(float(arrays['voxel_size'])/2.).area < .75:
+        if (support[:, 2].max() < cfg.get('minimum_height_m', 2.) or
+                MultiPoint(support[:, :2]).convex_hull.buffer(float(arrays['voxel_size'])/2.).area
+                < cfg.get('minimum_area_m2', .75)):
             continue
         next_id += 1
         labels[remaining], confidence[remaining], source[remaining] = next_id, proposal_confidence[remaining], new_source

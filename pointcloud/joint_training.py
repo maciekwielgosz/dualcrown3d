@@ -33,11 +33,13 @@ def sampling_weights(rows, real_fraction):
 
 class DrawDataset(Dataset):
     """Tuple index includes draw number, so repeated plots produce new crops."""
-    def __init__(self, rows, seed, max_points, hard=False, difficulty=None):
+    def __init__(self, rows, seed, max_points, hard=False, difficulty=None,
+                 crown_supervision=False):
         if any(r['model_split'] != 'train' for r in rows):
             raise ValueError('DrawDataset accepts train rows only')
         self.rows, self.seed, self.max_points = rows, seed, max_points
         self.hard, self.difficulty, self.epoch = hard, difficulty or {}, 0
+        self.crown_supervision, self._polygons = crown_supervision, {}
 
     def __len__(self):
         return len(self.rows)
@@ -68,7 +70,23 @@ class DrawDataset(Dataset):
         result = prepare_crop(arrays, rng, 20., self.max_points, True,
                               density_keep_fractions=(.5, .75, 1.),
                               preserve_height=bool(row.get('height_normalization')),
-                              anchor_index=anchor)
+                              anchor_index=anchor, return_transform=self.crown_supervision)
+        if self.crown_supervision:
+            import geopandas as gpd
+            from pointcloud.shared_instance import polygon_targets
+            path = row['gt_vector']
+            if path not in self._polygons:
+                frame = gpd.read_file(path)
+                key = 'treeID' if 'treeID' in frame else 'tree_id'
+                if 'complete' in frame:
+                    frame = frame[frame['complete'].astype(bool)]
+                if 'evaluation_eligible' in frame:
+                    frame = frame[frame['evaluation_eligible'].astype(bool)]
+                self._polygons[path] = dict(zip(frame[key].astype(int), frame.geometry))
+            ids, masks, valid = polygon_targets(result['coord'], result['semantic_target'],
+                                                result['tree_id'], result['local_to_world'],
+                                                self._polygons[path])
+            result.update(crown_ids=ids, crown_target=masks, crown_valid=valid)
         return result
 
 

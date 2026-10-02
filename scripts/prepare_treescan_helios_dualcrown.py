@@ -44,15 +44,18 @@ def write_csv(path: Path, rows: list[dict]) -> None:
 
 
 def voxelise(
-    xyz: np.ndarray, intensity: np.ndarray, tree_id: np.ndarray, voxel_size: float
+    xyz: np.ndarray, intensity: np.ndarray, tree_id: np.ndarray, voxel_size: float,
+    prefer_labelled: bool = True,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     origin = np.floor(xyz.min(0) / voxel_size) * voxel_size
     grid = np.floor((xyz - origin) / voxel_size).astype(np.int32)
     shifted = grid.astype(np.int64) - grid.min(0).astype(np.int64)
     extent = shifted.max(0) + 1
     key = shifted[:, 0] + extent[0] * (shifted[:, 1] + extent[1] * shifted[:, 2])
-    # Prefer labelled vegetation when multiple returns occupy the same voxel.
-    order = np.lexsort((-(tree_id > 0).astype(np.int8), key))
+    # Historical conversion preferred labelled vegetation. Controlled comparisons
+    # select geometry independently of reference labels.
+    order = (np.lexsort((-(tree_id > 0).astype(np.int8), key))
+             if prefer_labelled else np.argsort(key, kind="stable"))
     _, first = np.unique(key[order], return_index=True)
     selected = np.sort(order[first])
     return xyz[selected], intensity[selected], tree_id[selected], origin
@@ -77,7 +80,8 @@ def make_chm(path: Path, xyz: np.ndarray, resolution: float = 0.5) -> None:
 
 
 def convert_plot(source: Path, target: Path, split: str, voxel_size: float,
-                 allow_unobserved_training_crowns: bool = False) -> dict:
+                 allow_unobserved_training_crowns: bool = False,
+                 prefer_labelled_voxels: bool = True) -> dict:
     laz_path = next(source.glob("*_ALS.laz"))
     crowns_path = source / "crowns_full.gpkg"
     cloud = laspy.read(laz_path)
@@ -93,7 +97,8 @@ def convert_plot(source: Path, target: Path, split: str, voxel_size: float,
     finite = np.isfinite(xyz).all(1) & np.isfinite(intensity)
     xyz, intensity, tree_id = xyz[finite], intensity[finite], tree_id[finite]
     raw_points = len(xyz)
-    xyz, intensity, tree_id, voxel_origin = voxelise(xyz, intensity, tree_id, voxel_size)
+    xyz, intensity, tree_id, voxel_origin = voxelise(
+        xyz, intensity, tree_id, voxel_size, prefer_labelled_voxels)
     lo, hi = np.percentile(intensity, (1, 99))
     intensity = np.clip((intensity - lo) / max(float(hi - lo), 1.0), 0, 1).astype(np.float32)
 
@@ -163,6 +168,7 @@ def convert_plot(source: Path, target: Path, split: str, voxel_size: float,
         "grid_version": 2,
         "repaired_grid_collisions": 0,
         "supervision_changed": False,
+        "voxel_representative_label_independent": not prefer_labelled_voxels,
         "npz_sha256": sha256(npz_path),
         "unobserved_full_crowns": len(crown_ids - point_ids),
     }

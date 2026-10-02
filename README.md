@@ -25,6 +25,20 @@ confidence-gated split/merge fusion. Both GPU fine-tuning trials stopped after
 These changes remain experimental; production weights were not replaced.
 [Protocol and reproduction](reports/supervision_v4_protocol.md).
 
+The **shared-instance v5 experiment** uses one transformer query for both a
+point mask and a full-crown raster mask, then merges window proposals before
+exporting matching LAZ IDs and crown GeoPackages. It is technically validated
+but underperforms the retained model on the 14-plot validation set, so it is
+not promoted. [Architecture, reproduction, and metrics](reports/shared_v5_protocol.md).
+
+A [validation-only small-tree threshold calibration](reports/legacy_small_tree_calibration.md)
+of the retained model did not recover small crowns without a quality trade-off.
+The production checkpoint and inference settings remain unchanged.
+
+The [research handoff](reports/AGENT_HANDOFF_2026-10-02.md) records the newer
+superpoint/Q128 and full-plot verifier experiments, their validation limits,
+and the proposed two-pass model. These experiments have not replaced Model 20.
+
 ## Run
 
 Run from this repository's root using the configured `.venv-gpu` environment.
@@ -41,7 +55,8 @@ defaults point to the older v3 checkpoint, so pass the selected paths explicitly
   --selection outputs/dualcrown3d_supervision_v4/selected.json \
   --device cuda:0 --output-dir output_dualcrown3d
 .venv-gpu/bin/python scripts/validate_dual_outputs.py --output-dir output_dualcrown3d
-.venv-gpu/bin/python -m unittest discover -s tests -v
+.venv-gpu/bin/python -m pip install -r requirements-test.txt
+.venv-gpu/bin/python -m pytest tests -q
 ```
 
 Use a fresh output directory; completed exports are protected from replacement.

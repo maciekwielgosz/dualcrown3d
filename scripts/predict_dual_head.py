@@ -25,7 +25,8 @@ from pointcloud.instance_output import merge_masks_with_sources
 from scripts.evaluate_pointcloud_litept import starts_for_axis, ownership_intervals, model_input, cluster_candidates, filter_candidates, dbh_naslund
 
 
-def predict(model, arrays, max_points=40000, owner_only=True):
+def predict(model, arrays, max_points=40000, owner_only=True, collect_crowns=False,
+            raw_object_threshold=.05):
     start = time.monotonic()
     xyz = arrays['coord']
     size, overlap = 20., 8.
@@ -41,6 +42,10 @@ def predict(model, arrays, max_points=40000, owner_only=True):
     point_prob = np.zeros(len(xyz), np.float32)
     visited = np.zeros(len(xyz), np.uint8)
     offsets, members, probabilities, scores = [0], [], [], []
+    crown_offsets, crown_members, crown_scores, query_quality = [0], [], [], []
+    if collect_crowns:
+        crown_origin = np.floor(xyz[:, :2].min(0) / .5) * .5
+        crown_width = int(np.ceil((xyz[:, 0].max() - crown_origin[0]) / .5)) + 2
     device = next(model.parameters()).device
     rng = np.random.default_rng(20260925)
     windows = 0
@@ -80,7 +85,14 @@ def predict(model, arrays, max_points=40000, owner_only=True):
                     visited[owned] += 1
                     masks = result['instance_masks']['mask_logits'].sigmoid().cpu().numpy()
                     quality = result['instance_masks']['object_logits'].sigmoid().cpu().numpy()
-                    for q in np.flatnonzero(quality >= .05):
+                    if collect_crowns:
+                        decoded = result['instance_masks']
+                        crown_probability = decoded['crown_logits'].sigmoid().cpu().numpy().reshape(len(quality), -1)
+                        crown_xy = decoded['crown_xy'].cpu().numpy() + xyz[chosen, :2].mean(0)
+                        grid = np.floor((crown_xy - crown_origin) / .5).astype(np.int64)
+                        global_cell = grid[:, 1] * crown_width + grid[:, 0]
+                        detected_quality = decoded['quality_logits'].sigmoid().cpu().numpy()
+                    for q in np.flatnonzero(quality >= raw_object_threshold):
                         retained = np.flatnonzero(masks[q] >= .2)
                         if len(retained) < 4:
                             continue
@@ -91,16 +103,30 @@ def predict(model, arrays, max_points=40000, owner_only=True):
                         probabilities.append(masks[q, retained].astype(np.float16))
                         scores.append(float(quality[q]))
                         offsets.append(offsets[-1] + len(retained))
+                        if collect_crowns:
+                            crown_keep = crown_probability[q] >= .2
+                            crown_members.append(global_cell[crown_keep].astype(np.int64))
+                            crown_scores.append(crown_probability[q, crown_keep].astype(np.float16))
+                            crown_offsets.append(crown_offsets[-1] + int(crown_keep.sum()))
+                            query_quality.append(float(detected_quality[q]))
                     windows += 1
                 if windows % 200 == 0:
                     print(f'{windows} windows; {np.count_nonzero(visited):,}/{len(xyz):,} owned voxels; {time.monotonic()-start:.1f}s', flush=True)
     if not np.all(visited == 1):
         raise AssertionError(f'Ownership failed: missing={int((visited==0).sum())}, repeated={int((visited>1).sum())}')
-    return dict(tree_probability=old_prob, shifted_center=old_center, point_probability=point_prob,
-                object_score=np.asarray(scores, np.float32), candidate_offset=np.asarray(offsets, np.int64),
-                point_index=np.concatenate(members) if members else np.empty(0, np.int32),
-                point_score=np.concatenate(probabilities) if probabilities else np.empty(0, np.float16),
-                seconds=np.float64(time.monotonic()-start), windows=np.int64(windows))
+    raw = dict(tree_probability=old_prob, shifted_center=old_center, point_probability=point_prob,
+               object_score=np.asarray(scores, np.float32), candidate_offset=np.asarray(offsets, np.int64),
+               point_index=np.concatenate(members) if members else np.empty(0, np.int32),
+               point_score=np.concatenate(probabilities) if probabilities else np.empty(0, np.float16),
+               seconds=np.float64(time.monotonic()-start), windows=np.int64(windows))
+    if collect_crowns:
+        raw.update(candidate_quality=np.asarray(query_quality, np.float32),
+                   crown_offset=np.asarray(crown_offsets, np.int64),
+                   crown_cell=np.concatenate(crown_members) if crown_members else np.empty(0, np.int64),
+                   crown_score=np.concatenate(crown_scores) if crown_scores else np.empty(0, np.float16),
+                   crown_grid_origin=crown_origin, crown_grid_width=np.int64(crown_width),
+                   crown_grid_size=np.float32(.5))
+    return raw
 
 
 def legacy_instances(arrays, raw, metadata, config):

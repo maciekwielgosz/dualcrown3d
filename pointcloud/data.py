@@ -57,6 +57,7 @@ def prepare_crop(
     density_keep_fractions: tuple[float, ...] | None = None,
     preserve_height: bool = False,
     anchor_index: int | None = None,
+    return_transform: bool = False,
 ) -> dict[str, torch.Tensor]:
     coord = arrays["coord"]
     tree_id = arrays["tree_id"]
@@ -97,6 +98,9 @@ def prepare_crop(
                 instance_offset[retained_density],
             )
 
+    rotation = np.eye(3, dtype=np.float32)
+    scale = 1.0
+    center = np.mean(coord, axis=0, keepdims=True)
     if augment:
         angle = float(rng.uniform(-np.pi, np.pi))
         scale = float(rng.uniform(0.9, 1.1))
@@ -105,7 +109,6 @@ def prepare_crop(
             [[cosine, -sine, 0.0], [sine, cosine, 0.0], [0.0, 0.0, 1.0]],
             dtype=np.float32,
         )
-        center = np.mean(coord, axis=0, keepdims=True)
         coord = (coord - center) @ rotation.T * scale + center
         instance_offset = instance_offset @ rotation.T * scale
         if rng.random() < 0.3:
@@ -132,7 +135,14 @@ def prepare_crop(
         tree_id[retained],
         instance_offset[retained],
     )
-    coord[:, :2] -= np.mean(coord[:, :2], axis=0, keepdims=True)
+    xy_mean = np.mean(coord[:, :2], axis=0)
+    coord[:, :2] -= xy_mean
+    if return_transform:
+        inverse = rotation[:2, :2].T.astype(np.float64) / scale
+        local_to_world = np.eye(3, dtype=np.float64)
+        local_to_world[:2, :2] = inverse
+        local_to_world[:2, 2] = (arrays['source_origin'][:2] + center[0, :2] +
+                                  inverse @ (xy_mean - center[0, :2]))
     if not preserve_height:
         coord[:, 2] -= np.min(coord[:, 2])
     grid_coord = np.floor((coord - coord.min(axis=0)) / voxel_size).astype(np.int32)
@@ -152,7 +162,7 @@ def prepare_crop(
     features = np.column_stack((coord, intensity)).astype(np.float32)
     semantic = (tree_id > 0).astype(np.int64)
     count = len(coord)
-    return {
+    result = {
         "coord": torch.from_numpy(coord),
         "grid_coord": torch.from_numpy(grid_coord),
         "feat": torch.from_numpy(features),
@@ -162,6 +172,9 @@ def prepare_crop(
         "tree_id": torch.from_numpy(tree_id),
         "semantic_target": torch.from_numpy(semantic_target.astype(np.int64)),
     }
+    if return_transform:
+        result['local_to_world'] = torch.from_numpy(local_to_world)
+    return result
 
 
 class PointCloudCropDataset(Dataset):

@@ -166,6 +166,9 @@ class DualHeadLitePT(nn.Module):
         if decoder_policy == 'hybrid_v4':
             from pointcloud.decoder_v4 import HybridTreeMaskDecoder
             decoder_class = HybridTreeMaskDecoder
+        elif decoder_policy == 'shared_v5':
+            from pointcloud.shared_instance import SharedCrownDecoder
+            decoder_class = SharedCrownDecoder
         elif decoder_policy != 'legacy':
             raise ValueError(decoder_policy)
         self.point_decoder = decoder_class(hidden_dim=hidden_dim, queries=queries,

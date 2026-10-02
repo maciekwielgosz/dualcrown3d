@@ -1,0 +1,2 @@
+# Install into the configured point-cloud environment for the complete test suite.
+pytest==9.1.1

@@ -18,8 +18,9 @@ class HybridTreeMaskDecoder(TreeMaskDecoder):
         hidden, xyz = dense.pop('features'), data['coord']
         embedding = self.embedding(hidden)
         probability = dense['semantic_logits'].softmax(1)[:, 1]
-        foreground = (probability.detach() >= .1) & (xyz[:, 2] >= .5)
-        if (self.training and 'tree_id' in data and
+        foreground = (xyz[:, 2] >= .5) if getattr(self, 'all_canopy_candidates', False) else (
+            (probability.detach() >= .1) & (xyz[:, 2] >= .5))
+        if (not getattr(self, 'all_canopy_candidates', False) and self.training and 'tree_id' in data and
                 torch.rand((), device=xyz.device) < self.teacher_probability):
             foreground = data['tree_id'] > 0
         indices = torch.nonzero(foreground, as_tuple=False).flatten()
@@ -31,7 +32,9 @@ class HybridTreeMaskDecoder(TreeMaskDecoder):
                   'mask_supervision': 'hungarian_v4'}
         if not len(indices):
             return {**result, 'mask_logits': hidden.new_empty((0, len(xyz))),
-                    'object_logits': hidden.new_empty(0), 'seed_index': indices, 'aux_outputs': []}
+                    'object_logits': hidden.new_empty(0), 'seed_index': indices, 'aux_outputs': [],
+                    'query_features': hidden.new_empty((0, hidden.shape[1])),
+                    'query_center_xy': hidden.new_empty((0, 2)), 'point_features': hidden}
         # Deduplicate spatial cells before applying the attention memory limit.
         grid = torch.floor((xyz[indices]-xyz[indices].amin(0))/.75).long()
         extent = grid.amax(0)+1
@@ -72,6 +75,8 @@ class HybridTreeMaskDecoder(TreeMaskDecoder):
             blocked[blocked.all(1)]=False
             query=layer(query, memory, blocked); output=decode(query); auxiliary.append(output)
         return {**result, **output, 'seed_index':seed_index,
+                'query_features': self.query_norm(query), 'query_center_xy': centers,
+                'point_features': hidden,
                 'aux_outputs':auxiliary[:-1] if self.training else []}
 
 

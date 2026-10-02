@@ -41,11 +41,11 @@ def _legacy_merge(arrays, candidates, config):
         if len(ids) < config['minimum_voxels']:
             continue
         xyz = arrays['coord'][ids]
-        if xyz[:, 2].max() < 2.:
+        if xyz[:, 2].max() < config.get('minimum_height_m', 2.):
             continue
         xy = xyz[:, :2].astype(np.float64) + arrays['source_origin'][:2]
         geometry = MultiPoint(xy).convex_hull.buffer(float(arrays['voxel_size']) / 2.)
-        if geometry.geom_type != 'Polygon' or geometry.is_empty or geometry.area < .75:
+        if geometry.geom_type != 'Polygon' or geometry.is_empty or geometry.area < config.get('minimum_area_m2', .75):
             continue
         geometry = Polygon(geometry.exterior)
         identifier = len(instances) + 1
