@@ -560,3 +560,16 @@ To referencje idei; nie są dowodem, że ich opublikowane wyniki przenoszą się
 - Oficjalny projekt SPT/SuperCluster/EZ-SP: https://github.com/drprojects/superpoint_transformer
 
 Najbliższy krok badawczy wynikający z tej sesji to **uczony drugi przebieg z kontekstem i rewizją przypisań**, oceniany względem zachowanego Model20, przy zachowaniu czułości na małe drzewa. To propozycja do realizacji, nie ukończony model.
+
+## 19. Aktualizacja po sesji „two-pass” (2026-10-02, późniejsza sesja)
+
+Zrealizowano sekcję 11. Pełny opis, protokół, wyniki i ograniczenia: [two_pass_refinement_design.md](two_pass_refinement_design.md). Najważniejsze punkty dla kolejnego agenta:
+
+- **Wąskim gardłem jest detekcja środków drzew, nie maski ani cechy.** Zamrożone głosy 3D Model20 (`shifted_center`) z prawdziwymi centroidami dają na validation 523/673 drzew i point SB-PQ 0.670 (Model20: 299 i 0.405).
+- Drugi przebieg generujący maski (trzy warianty `residual_v1`–`v3`) to **wynik negatywny**. Nie wracać do niego na zamrożonych cechach.
+- Działający drugi przebieg: mały 3D U-Net wykrywający środki w przestrzeni głosów + korekcyjne przypisanie (`pointcloud/vote_centers.py`, `scripts/train_vote_centers.py`). Stage 1 = zamrożony Model20.
+- **Pełna gęstość (ploty z etykietami):** kandydat `vote_centres_v5` przeszedł bramkę na validation i na teście (24 ploty) daje point/crown SB-PQ 0.462/0.449 wobec 0.418/0.422, małe korony 46/241 wobec 21/241, recall dużych drzew 0.716 wobec 0.622, bez spadku precyzji. Rośnie liczba rozbitych koron GT (140 → 163).
+- **Gęstość sceny referencyjnej (~10 wokseli/m²): brak wykazanej korzyści.** Na przerzedzonym teście `vote_centres_v6` daje PQ 0.394/0.328 wobec 0.390/0.322, przy nieco gorszych małych koronach i recallu dużych drzew. Dla sceny użytkownika nadal obowiązuje `output_20`.
+- Nowe foldery: `output_27`/`output_29` (test v5/v6), `output_30` (test przerzedzony), `output_28`/`output_31` (scena referencyjna v5/v6, tylko do oglądania; `STATUS.md` w środku).
+- Model20 pozostaje modelem produkcyjnym. Nic nie zostało zacommitowane. Test został odczytany dwukrotnie (v5, v6) — nie używać go do dalszego strojenia.
+- Następny krok: detektor środków działający na rzadkich chmurach (grubsza/wieloskalowa siatka głosów, trening na HELIOS ~14 pkt/m² i realnych rzadkich danych), oceniany na rzadkiej walidacji.
