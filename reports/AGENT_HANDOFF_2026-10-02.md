@@ -573,3 +573,46 @@ Zrealizowano sekcję 11. Pełny opis, protokół, wyniki i ograniczenia: [two_pa
 - Nowe foldery: `output_27`/`output_29` (test v5/v6), `output_30` (test przerzedzony), `output_28`/`output_31` (scena referencyjna v5/v6, tylko do oglądania; `STATUS.md` w środku).
 - Model20 pozostaje modelem produkcyjnym. Nic nie zostało zacommitowane. Test został odczytany dwukrotnie (v5, v6) — nie używać go do dalszego strojenia.
 - Następny krok: detektor środków działający na rzadkich chmurach (grubsza/wieloskalowa siatka głosów, trening na HELIOS ~14 pkt/m² i realnych rzadkich danych), oceniany na rzadkiej walidacji.
+
+## 20. Aktualizacja wieczorna: two-pass v7, Athena, stage 3 i stage 1 (2026-10-02)
+
+Pełny opis: [two_pass_v7_vote_field.md](two_pass_v7_vote_field.md). Sekcja 19 opisuje v4–v6; ta sekcja ją zastępuje co do stanu faktycznego.
+
+**Co się zmieniło względem sekcji 19**
+
+- Detektor v5/v6 nie pomagał przy gęstości sceny referencyjnej. Przyczyna była w detektorze: niedouczenie (na plotach treningowych wypadał nie lepiej niż na validation) i źle postawiony cel (jedna komórka 0.25 m w centroidzie, którego zaszumione głosy nie wskazują).
+- **v7** (`pointcloud/vote_field.py`, `scripts/train_vote_field.py`): głosy Model20 uśredniane po 4 obrotach siatki (`vote_ensemble.py`), cel = mediana głosów drzewa, mapa ciepła na siatce 0.5 m z głowicą offsetu i głowicą zasięgu głosów (extent), trening na mieszance dense / thinned / HELIOS, tryb *replace* (wszystkie środki pochodzą ze stage 2). Na to weryfikator kandydatów (`centre_verifier.py`, gradient boosting).
+- Kandydat końcowy: `outputs/dualcrown3d_two_pass_v1/runs/ens4_b/weights/best.pt` (4 detektory + weryfikator, konfiguracja `mean_heat_t0.7_nms0_extent1.5_norm`). Wariant bez weryfikatora: `runs/ens4_b_detector/`.
+- Protokół: `protocol_v7.json` (bramki dense, thin10, HELIOS; jedna konfiguracja dla wszystkich gęstości) i `test_plan_v7.json` (zapisany przed odczytem testu).
+
+**Wyniki held-out (point / crown SB-PQ, Model20 → v7)**
+
+| Zestaw | Model20 | v7 | Małe korony ≤10 m² | Recall dużych drzew |
+|---|---:|---:|---:|---:|
+| 24 ploty test, pełna gęstość | 0.418 / 0.422 | 0.512 / 0.486 | 21 → 88 z 241 | 0.622 → 0.788 |
+| te same ploty przerzedzone do 10 wokseli/m² | 0.389 / 0.322 | 0.500 / 0.374 | 24 → 41 z 241 | 0.500 → 0.625 |
+| 7 plotów HELIOS test | 0.612 / 0.576 | 0.719 / 0.638 | 7 → 14 z 39 | 1.0 → 1.0 |
+
+Klasyczny pipeline CHM na tych samych plotach i tym samym kodzie metryk: 0.292 / 0.270 na teście (`outputs/classical_chm_baseline_v1/`).
+
+**Najważniejsze zastrzeżenia**
+
+- **Scena referencyjna zachowuje się inaczej niż proxy.** Stage 2 zostawia tam 4 143 drzewa (Model20: 9 644) i około 1/3 wokseli drzew bez instancji. Brak GT, więc nie da się tego ocenić liczbowo. `output_38` = sam stage 2; `output_39` = stage 2 + fallback pokrycia (drzewo Model20 zostaje, gdy stage 2 zajął <30% jego wokseli; `assignment_source` 10). Fallback sprawdzony tylko na validation.
+- Metryka protokołu karze za drzewa w obszarach nieoznaczonych (około połowy każdego realnego plotu). Obok niej raportowany jest point PQ w obszarze oznaczonym (`annotated_point_metrics` w `train_vote_field.py`).
+- Test dense i thin10 był czytany wcześniej (v5, v6). HELIOS test — pierwszy raz.
+- Validation mocno używana ponownie. Kandydaci do weryfikatora i stage 3 pochodzą z detektorów, które widziały te same ploty.
+- Nic nie zostało zacommitowane po commicie `db5d344`. Model20 i starsze foldery wyników bez zmian.
+
+**Athena** (`ssh athena`; pamięć projektu: `athena-cluster-setup`)
+
+- Kopia kodu i danych train/val (bez splitów test): `/net/pr2/projects/plgrid/plggwie/plgwielgosz/ideas/segm/`. Środowisko: `ideas/envs/dualcrown`. Skrypty zadań: `slurm/` (`env.sh`, `run.sbatch`, `train_vote_field.sbatch`). Konto `plgdyplomanci7-gpu-a100`, partycja `plgrid-gpu-a100`.
+- Ścieżki bezwzględne z manifestów są mapowane zmienną `DUALCROWN_PATH_MAP` (`pointcloud/paths.py`).
+- Trening jednego detektora: 20–50 min na A100. Wyniki przebiegów `a_*`, `ens*` skopiowane z powrotem do `outputs/dualcrown3d_two_pass_v1/runs/`.
+
+**Wątki otwarte**
+
+1. **Stage 1 w większej skali** (osobny agent): zadania `s1_r1a_ctrl` … `s1_r1f_combo_assign` na Athenie, skrypt `scripts/train_stage1_scaled.py`, wyniki w `outputs/dualcrown3d_stage1_scaled_v1/`. W chwili pisania **trwały, brak wyników**. Ocena tylko na validation (błąd głosów, oracle prawdziwych środków). Lepszy stage 1 = przeliczenie cache głosów i ponowny trening stage 2.
+2. **Stage 3** (`candidate_assignment.py`, `assign_net.py`, `train_assign_net.py`): uczone przypisanie wokseli do kandydatów. Sufit 0.93 point PQ, ale sieć osiąga tylko parytet z regułą najbliższego środka (79% trafnych slotów). Nie wchodzi do kandydata. Potrzebuje lepszych wejść (cechy LitePT albo ostrzejsze głosy).
+3. Wyniki negatywne tej sesji: embedding instancji Model20, adaptacyjne sigmy celu (v8), wzrost koron, tryb korekcyjny przy dobrym detektorze.
+
+**Rekomendowany następny krok:** oznaczyć 2–3 ha rzadkiego ALS z domeny sceny użytkownika. Bez tego nie da się rozstrzygnąć, czy stage 2 na scenie jest zbyt ostrożny, czy Model20 nadsegmentuje.

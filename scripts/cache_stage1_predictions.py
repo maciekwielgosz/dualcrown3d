@@ -39,7 +39,8 @@ LEGACY_RAW = PROJECT / 'outputs/dualcrown3d_legacy_small_tree_calibration/raw_va
 
 
 def sha256(path):
-    with Path(path).open('rb') as stream:
+    from pointcloud.paths import remap
+    with Path(remap(path)).open('rb') as stream:
         return hashlib.file_digest(stream, 'sha256').hexdigest()
 
 

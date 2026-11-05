@@ -169,6 +169,9 @@ class DualHeadLitePT(nn.Module):
         elif decoder_policy == 'shared_v5':
             from pointcloud.shared_instance import SharedCrownDecoder
             decoder_class = SharedCrownDecoder
+        elif decoder_policy == 'stem_seeded':
+            from pointcloud.stem_seeded import StemSeededDecoder
+            decoder_class = StemSeededDecoder
         elif decoder_policy != 'legacy':
             raise ValueError(decoder_policy)
         self.point_decoder = decoder_class(hidden_dim=hidden_dim, queries=queries,
@@ -274,6 +277,9 @@ def seed_mask_losses(output, ids):
     if output.get('mask_supervision') == 'hungarian_v4':
         from pointcloud.decoder_v4 import set_mask_losses
         return set_mask_losses(output, ids)
+    if output.get('mask_supervision') == 'stem_seeded':
+        from pointcloud.stem_seeded import stem_mask_losses
+        return stem_mask_losses(output, ids)
     zero = output['embedding'].sum() * 0.
     if not len(output['seed_index']):
         return {'mask_loss': zero, 'embedding_loss': discriminative_loss(output['embedding'], ids), 'mask_iou': zero}

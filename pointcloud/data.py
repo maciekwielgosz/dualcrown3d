@@ -13,9 +13,10 @@ from torch.utils.data import Dataset
 def read_manifest(
     path: Path, split: str, source_dataset: str | None = None
 ) -> list[dict[str, str]]:
+    from pointcloud.paths import remap_row
     with path.open("r", encoding="utf-8", newline="") as stream:
         return [
-            row
+            remap_row(row)
             for row in csv.DictReader(stream)
             if row["model_split"] == split
             and (source_dataset is None or row["source_dataset"] == source_dataset)

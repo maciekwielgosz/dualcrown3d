@@ -1,6 +1,7 @@
 # DualCrown3D two-pass model: vote-centre second pass
 
 Written 2026-10-02 as the follow-up to `AGENT_HANDOFF_2026-10-02.md`, section 11 (staged segmentation).
+**Superseded the same day by `two_pass_v7_vote_field.md`**: the v7 detector passes the sparse-density gate that v5 and v6 failed. This document remains the record of v4 to v6 and of the mask-decoder negative result.
 Status: **experimental candidate. At the full density of the annotated plots it passes the preregistered validation gate and improves the held-out test. At the density of the reference scene (about 10 voxels/m2) it shows no demonstrated benefit. Not promoted.** Model20 and every existing output folder are unchanged. Nothing from this session is committed to Git.
 
 ## 1. Summary

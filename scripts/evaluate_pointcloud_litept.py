@@ -66,8 +66,9 @@ def parse_args() -> argparse.Namespace:
 
 
 def read_manifest(path: Path, split: str) -> list[dict[str, str]]:
+    from pointcloud.paths import remap_row
     with path.open("r", encoding="utf-8", newline="") as stream:
-        return [row for row in csv.DictReader(stream) if row["model_split"] == split]
+        return [remap_row(row) for row in csv.DictReader(stream) if row["model_split"] == split]
 
 
 def starts_for_axis(minimum: float, maximum: float, size: float, overlap: float) -> list[float]:

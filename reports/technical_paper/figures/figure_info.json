@@ -1,0 +1,32 @@
+{
+  "votes_plot": "ideas__CEDAR_CYPRESS__plot_Kokonoe_17_annotated",
+  "test_plots": [
+    "for__NIBIO__plot_11_annotated",
+    "ideas__CEDAR_CYPRESS__plot_Kokonoe_8_annotated",
+    "ideas__FGI_EMIT__plot_1028_annotated",
+    "ideas__WILDFOREST3D__plot_12_annotated"
+  ],
+  "per_plot_better": {
+    "output_32_two_pass_v7_test_dense": [
+      23,
+      24
+    ],
+    "output_33_two_pass_v7_test_thin10": [
+      24,
+      24
+    ],
+    "output_34_two_pass_v7_test_helios": [
+      7,
+      7
+    ]
+  },
+  "scene_crop": {
+    "x0": 764280.0,
+    "y0": 197260.0,
+    "size": 120.0,
+    "classical": 338,
+    "model20": 631,
+    "v7": 361,
+    "v7_fallback": 577
+  }
+}
